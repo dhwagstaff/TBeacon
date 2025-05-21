@@ -1,0 +1,159 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "2A5DFA3A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "6741812506",
+      "localizations" : [
+        {
+          "description" : "Unlimited reminders, alerts, and categories",
+          "displayName" : "Task Beacon Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.pocketmeapps.TaskBeacon",
+      "referenceName" : "Task Beacon Premium",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6741784474",
+    "_developerTeamID" : "LMC9JS3WT4",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 762542992.80903006,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21643130",
+      "localizations" : [
+
+      ],
+      "name" : "Task Beacon Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "49.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6742674053",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Task Beacon Premium unlimited items & no ads",
+              "displayName" : "Task Beacon Premium (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "PMA_TBPA_25",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Task Beacon Premium Annual",
+          "subscriptionGroupID" : "21643130",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6742674030",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Task Beacon Premium unlimited items & ad-free",
+              "displayName" : "Task Beacon Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "PMA_TBPM_25",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Task Beacon Premium Monthly",
+          "subscriptionGroupID" : "21643130",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
