@@ -66,7 +66,7 @@ struct EditableListView: View {
     @EnvironmentObject var locationManager: LocationManager
 
     @StateObject private var quickActionManager = QuickActionsManager.shared
-    @StateObject private var adManager = AdManager()
+    @StateObject private var appDelegate = AppDelegate.shared
     @StateObject private var barcodeScannerViewModel = BarcodeScannerViewModel()
     @StateObject private var permissionManager = PermissionManager.shared
     
@@ -352,9 +352,15 @@ struct EditableListView: View {
                     } label: {
                         // Store name and address in the same row
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(store)
-                                .font(.headline)
-                                .foregroundColor(.primary)
+                            HStack(spacing: 4) {
+                                Image(systemName: "storefront.circle.fill")
+                                    .imageScale(.large)
+                                    .foregroundColor(.primary)
+
+                                Text(store)
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                            }
                             
                             if let firstItem = shoppingListViewModel.groupedItemsByStoreAndCategory[store]?.values.first?.first,
                                let storeAddress = firstItem.storeAddress {
@@ -371,95 +377,6 @@ struct EditableListView: View {
             }
         }
     }
-    
-//    @ViewBuilder
-//    private var assignedItemsSection: some View {
-//        // Then show items with assigned stores (everything except "Other")
-//        ForEach(Array(shoppingListViewModel.groupedItemsByStoreAndCategory.keys.sorted()), id: \.self) { store in
-//            // Skip the "Other" category since we already displayed it
-//            if store != "Other" && !store.isEmpty {
-//                Section {
-//                    DisclosureGroup {
-//                        // Store address
-//                        if let firstItem = shoppingListViewModel.groupedItemsByStoreAndCategory[store]?.values.first?.first,
-//                           let storeAddress = firstItem.storeAddress {
-//                            Text(storeAddress)
-//                                .font(.subheadline)
-//                                .foregroundColor(.secondary)
-//                                .padding(.leading)
-//                                .padding(.bottom, 8)
-//                        }
-//                        
-//                        // Categories and items
-//                        if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[store] {
-//                            ForEach(Array(categories.keys.sorted()), id: \.self) { category in
-//                                if let items = categories[category], !items.isEmpty {
-//                                    // Category header - match the same pattern as todo items
-//                                    DisclosureGroup(
-//                                        isExpanded: Binding(
-//                                            get: { expandedCategoryMap["\(store)_\(category)"] ?? false },
-//                                            set: { expandedCategoryMap["\(store)_\(category)"] = $0 }
-//                                        ),
-//                                        content: {
-//                                            shoppingItemsList(items: items)
-//                                        },
-//                                        label: {
-//                                            categoryLabel(category: category, items: items)
-//                                        }
-//                                    )
-//                                    .id("\(store)-\(category)-\(refreshTrigger)")
-//                                }
-//                            }
-//                        }
-//                    } label: {
-//                        // Store name as the main header
-//                        Text(store)
-//                            .font(.headline)
-//                            .foregroundColor(.primary)
-//                    }
-//                    .background(Color(.systemBackground))
-//                    .listRowBackground(Color(.systemBackground))
-//                }
-//                .id("store-section-\(store)-\(refreshTrigger)")
-//            }
-//        }
-//    }
-    
-//    private var assignedItemsSection: some View {
-//        // Then show items with assigned stores (everything except "Other")
-//        ForEach(Array(shoppingListViewModel.groupedItemsByStoreAndCategory.keys.sorted()), id: \.self) { store in
-//            // Skip the "Other" category since we already displayed it
-//            if store != "Other" && !store.isEmpty {
-//                Section {
-//                    DisclosureGroup(store) {
-//                        if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[store] {
-//                            ForEach(Array(categories.keys.sorted()), id: \.self) { category in
-//                                if let items = categories[category], !items.isEmpty {
-//                                    // Category header - match the same pattern as todo items
-//                                    DisclosureGroup(
-//                                        isExpanded: Binding(
-//                                            get: { expandedCategoryMap["\(store)_\(category)"] ?? false },
-//                                            set: { expandedCategoryMap["\(store)_\(category)"] = $0 }
-//                                        ),
-//                                        content: {
-//                                            shoppingItemsList(items: items)
-//                                        },
-//                                        label: {
-//                                            categoryLabel(category: category, items: items)
-//                                        }
-//                                    )
-//                                    .id("\(store)-\(category)-\(refreshTrigger)")
-//                                }
-//                            }
-//                        }
-//                    }
-//                    .background(Color(.systemBackground))
-//                    .listRowBackground(Color(.systemBackground))
-//                }
-//                .id("store-section-\(store)-\(refreshTrigger)")
-//            }
-//        }
-//    }
     
     // Reusable view for shopping items list
     @ViewBuilder
@@ -917,7 +834,9 @@ struct EditableListView: View {
                             .id("shopping-list-\(refreshTrigger)-\(forceViewUpdate)")
                         
                         if !entitlementManager.isPremiumUser {
-                            RewardedAdSection(showAd: $showAd, isAdReady: $isAdReady, adManager: adManager)
+                            RewardedAdSection(showAd: $appDelegate.showAd,
+                                              isAdReady: $appDelegate.isAdReady,
+                                              adManager: appDelegate.adManager)
                         }
                     }
                     
@@ -1125,6 +1044,9 @@ struct EditableListView: View {
                             .environmentObject(subscriptionsManager)
                     }
                 }
+                .onChange(of: appDelegate.isAdReady) {
+                    appDelegate.handleAdChange(appDelegate.isAdReady)
+                }
                 .onAppear {
                     observeChanges()
                     
@@ -1279,10 +1201,6 @@ struct EditableListView: View {
     
     private func observeChanges() {
         DispatchQueue.main.async {
-            if isAdReady {
-                handleAdChange(isAdReady)
-            }
-            
             handleSceneChange(scenePhase)
             
             if let quickAction = quickActionManager.quickAction {
@@ -1290,20 +1208,27 @@ struct EditableListView: View {
             }
             
             handleSegmentChange(selectedSegment)
-            
-            // Use .onChange modifier on the List instead of notification observers
-            // The notification observers have been moved to the List view in the main body
         }
     }
     
-    private func handleAdChange(_ newAdReady: Bool) {
-        if newAdReady && adManager.canShowAd() {
-            print("🚀 Ad is ready and cooldown passed, setting showAd = true")
-            DispatchQueue.main.async {
-                showAd = true
-            }
-        }
-    }
+//    private func observeChanges() {
+//        DispatchQueue.main.async {
+//            if isAdReady {
+//                handleAdChange(isAdReady)
+//            }
+//            
+//            handleSceneChange(scenePhase)
+//            
+//            if let quickAction = quickActionManager.quickAction {
+//                handleQuickActionChange(quickAction)
+//            }
+//            
+//            handleSegmentChange(selectedSegment)
+//            
+//            // Use .onChange modifier on the List instead of notification observers
+//            // The notification observers have been moved to the List view in the main body
+//        }
+//    }
     
     private func handleQAData() {
         if quickActionManager.quickAction == .isAddingToDoItem {
@@ -1386,7 +1311,6 @@ struct EditableListView: View {
                 self.shoppingListViewModel.shoppingItems = items
                 
                 // Clear and rebuild the groupings
-                print("debug1")
                 self.shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
                 self.shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
                 
@@ -1438,42 +1362,79 @@ struct EditableListView: View {
     
     // Method to delete a shopping item
     private func deleteShoppingItem(_ item: ShoppingItemEntity) {
-        if let locationIdentifier = item.value(forKey: "storeAddress") as? String {
-            // Use the view model to handle the deletion
-            shoppingListViewModel.deleteShoppingItem(item: item)
+        // Use the view model to handle the deletion
+        shoppingListViewModel.deleteShoppingItem(item: item)
+        
+        // Set up undo functionality
+        recentlyDeletedItem = (item, {
+            // Restore the item if the user taps Undo
+            let context = PersistenceController.shared.container.viewContext
+            let newItem = ShoppingItemEntity(context: context)
+            newItem.uid = item.uid
+            newItem.name = item.name
+            newItem.category = item.category
+            newItem.storeName = item.storeName
+            newItem.storeAddress = item.storeAddress
+            newItem.lastUpdated = Date()
+            newItem.dateAdded = item.dateAdded
             
-            // Set up undo functionality
-            recentlyDeletedItem = (item, {
-                // Restore the item if the user taps Undo
-                let context = PersistenceController.shared.container.viewContext
-                let newItem = ShoppingItemEntity(context: context)
-                newItem.uid = item.uid
-                newItem.name = item.name
-                newItem.category = item.category
-                newItem.storeName = item.storeName
-                newItem.storeAddress = item.storeAddress
-                newItem.lastUpdated = Date()
-                newItem.dateAdded = item.dateAdded
-                
-                // Save the restored item
-                try? context.save()
-                
-                // Refresh the UI
-                DispatchQueue.main.async {
-                    self.refreshDataAndViews()
-                }
-            })
+            // Save the restored item
+            try? context.save()
             
-            // Automatically dismiss the undo button after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                if self.recentlyDeletedItem?.0 === item {
-                    self.recentlyDeletedItem = nil
-                }
+            // Refresh the UI
+            DispatchQueue.main.async {
+                self.refreshDataAndViews()
             }
-            
+        })
+        
+        // Automatically dismiss the undo button after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            if self.recentlyDeletedItem?.0 === item {
+                self.recentlyDeletedItem = nil
+            }
+        }
+        
+        if let locationIdentifier = item.value(forKey: "storeAddress") as? String {
             locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
         }
     }
+//    private func deleteShoppingItem(_ item: ShoppingItemEntity) {
+//        if let locationIdentifier = item.value(forKey: "storeAddress") as? String {
+//            // Use the view model to handle the deletion
+//            shoppingListViewModel.deleteShoppingItem(item: item)
+//            
+//            // Set up undo functionality
+//            recentlyDeletedItem = (item, {
+//                // Restore the item if the user taps Undo
+//                let context = PersistenceController.shared.container.viewContext
+//                let newItem = ShoppingItemEntity(context: context)
+//                newItem.uid = item.uid
+//                newItem.name = item.name
+//                newItem.category = item.category
+//                newItem.storeName = item.storeName
+//                newItem.storeAddress = item.storeAddress
+//                newItem.lastUpdated = Date()
+//                newItem.dateAdded = item.dateAdded
+//                
+//                // Save the restored item
+//                try? context.save()
+//                
+//                // Refresh the UI
+//                DispatchQueue.main.async {
+//                    self.refreshDataAndViews()
+//                }
+//            })
+//            
+//            // Automatically dismiss the undo button after a delay
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+//                if self.recentlyDeletedItem?.0 === item {
+//                    self.recentlyDeletedItem = nil
+//                }
+//            }
+//            
+//            locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
+//        }
+//    }
     
     // Method to get emoji for a category
     private func item(for category: String) -> String {

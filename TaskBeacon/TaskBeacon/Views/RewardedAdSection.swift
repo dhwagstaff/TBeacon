@@ -49,7 +49,7 @@ struct RewardedAdSection: View {
                             rotationAngle = 360
                         }
 
-                    Text("⏳ Loading ad...")
+                    Text("Loading ad...")
                         .foregroundColor(.gray)
                         .padding()
                 }

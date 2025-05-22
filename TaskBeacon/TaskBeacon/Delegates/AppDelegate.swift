@@ -11,7 +11,16 @@ import GoogleMobileAds
 import UIKit
 import UserNotifications
 
-class AppDelegate: NSObject, UIApplicationDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
+    // Shared instance for app-wide access
+    static let shared = AppDelegate()
+    
+    @Published var isAdReady: Bool = false
+    @Published var showAd: Bool = false
+    
+    // Entitlement management
+    let entitlementManager = EntitlementManager()
+
     private var hasInitializedLocationManager = false
 
     var window: UIWindow?
@@ -80,9 +89,22 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         print("🚀 Initializing Google Mobile Ads SDK...")
         
         // Start Google Mobile Ads SDK with a slight delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            MobileAds.shared.start(completionHandler: nil)
+        // Initialize Google Mobile Ads SDK
+        MobileAds.shared.start { status in
+            print("📱 Google Mobile Ads SDK initialization status: \(status)")
+            
+            if status.adapterStatusesByClassName.count > 0 {
+                print("✅ Google Mobile Ads SDK initialized successfully")
+                // Start loading first ad
+                self.loadInitialAd()
+            } else {
+                print("❌ Google Mobile Ads SDK initialization failed")
+            }
         }
+        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+//            MobileAds.shared.start(completionHandler: nil)
+//        }
 
         // Request notification permission
         NotificationDelegate.shared.requestNotificationPermission()
@@ -122,6 +144,30 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         
         // Rest of existing refresh code...
         UserDefaults.standard.set(Date(), forKey: "lastGeofenceRefresh")
+    }
+    
+    // Function to load initial ad
+    private func loadInitialAd() {
+        // Only load ad if user is not premium
+        if !entitlementManager.isPremiumUser {
+            print("⏳ Loading initial ad for non-premium user")
+            // Ad loading logic would go here
+            // This would be similar to the RewardedAdSection implementation
+        }
+    }
+    
+    // Function to check if ads should be shown
+    func shouldShowAds() -> Bool {
+        return !entitlementManager.isPremiumUser
+    }
+    
+    func handleAdChange(_ newAdReady: Bool) {
+        if newAdReady && adManager.canShowAd() {
+            print("🚀 Ad is ready and cooldown passed, setting showAd = true")
+            DispatchQueue.main.async {
+                self.showAd = true
+            }
+        }
     }
 }
 

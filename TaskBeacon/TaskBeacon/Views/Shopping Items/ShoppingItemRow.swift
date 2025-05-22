@@ -63,9 +63,9 @@ struct ShoppingItemRow: View {
                     if let storeName = item.storeName, !storeName.isEmpty {
                         // Only show store name if this item is in the "Other" or unassigned group
                         if item.storeName == nil || item.storeName?.isEmpty == true {
-                            Text("Store: \(storeName)")
-                                .font(.subheadline)
-                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+//                            Text("Store: \(storeName)")
+//                                .font(.subheadline)
+//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
                         }
                     } else {
                         Text("⚠️ No store assigned")
@@ -80,14 +80,14 @@ struct ShoppingItemRow: View {
                             .cornerRadius(6)
                     }
 
-                    if let storeAddress = item.storeAddress, !storeAddress.isEmpty {
-                        // Only show address if this item is in the "Other" or unassigned group
-                        if item.storeName == nil || item.storeName?.isEmpty == true {
-                            Text("Address: \(storeAddress)")
-                                .font(.caption)
-                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
-                        }
-                    }
+//                    if let storeAddress = item.storeAddress, !storeAddress.isEmpty {
+//                        // Only show address if this item is in the "Other" or unassigned group
+//                        if item.storeName == nil || item.storeName?.isEmpty == true {
+//                            Text("Address: \(storeAddress)")
+//                                .font(.caption)
+//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+//                        }
+//                    }
                 }
 
                 Spacer()

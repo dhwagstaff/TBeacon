@@ -201,7 +201,7 @@ struct UnifiedStoreSelectionView: View {
                     .padding(.top)
                     .padding(.bottom, 8)
                 
-                if locationManager.isFetching {
+                if locationManager.isFetching && !searchQuery.isEmpty {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
                         .padding(.trailing, 8)

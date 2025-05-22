@@ -504,7 +504,7 @@ class ShoppingListViewModel: ListsViewModel {
     
     func loadEmojiMap() -> [String: String] {
         print("in loadEmojiMap")
-        guard let url = Bundle.main.url(forResource: "emoji_keyword_map", withExtension: "json"),
+        guard let url = Bundle.main.url(forResource: "itemEmojis", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let emojiMap = try? JSONDecoder().decode([String: String].self, from: data) else {
             print("❌ Failed to load emoji map")
