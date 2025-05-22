@@ -139,9 +139,11 @@ struct UnifiedStoreSelectionView: View {
             if selectedStoreFilter != Constants.allStores {
                 selectedStoreFilter = Constants.allStores
             }
-                        
-            Task {
-                await locationManager.searchNearbyStores(userQuery: searchQuery)
+                    
+            if locationManager.stores.isEmpty {
+                Task {
+                    await locationManager.searchNearbyStores(userQuery: searchQuery)
+                }
             }
             
             updateActiveCategories()
@@ -335,7 +337,6 @@ struct UnifiedStoreSelectionView: View {
                     
                     Spacer()
                     
-//                    if let userLocation = locationManager.userLocationManager?.location {
                    if let userLocation = locationManager.userLocation {
                         let distance = userLocation.distance(from: CLLocation(
                             latitude: store.mapItem.placemark.coordinate.latitude,
@@ -542,8 +543,10 @@ struct UnifiedStoreSelectionView: View {
             locationManager.stores.move(fromOffsets: IndexSet(integer: selectedIndex), toOffset: 0)
         }
         
+        print("in selectStore storeName ::: \(storeName) ::: storeAddress ::: \(storeAddress)")
+        
         // Post notification that a store was selected
-        NotificationCenter.default.post(name: NSNotification.Name("StoreSelected"), object: nil)
+      //  NotificationCenter.default.post(name: NSNotification.Name("StoreSelected"), object: nil)
         
         self.isPresented = false
     }

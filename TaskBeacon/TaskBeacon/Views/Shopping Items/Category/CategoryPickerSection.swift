@@ -46,10 +46,6 @@ struct CategoryPickerSection: View {
                                       selectedCategory: $selectedCategory,
                                       showCategorySelection: $showCategorySelection,
                                       selectedCategoryFromGroceryFood: $selectedCategoryFromGroceryFood)
-//                CategorySelectionView(selectedCategoryEmoji: $selectedCategoryEmoji,
-//                                      selectedCategory: $selectedCategory,
-//                                      showCategorySelection: $showCategorySelection,
-//                                      selectedCategoryFromGroceryFood: $selectedCategoryFromGroceryFood)
             }
         }
         .transition(.opacity)

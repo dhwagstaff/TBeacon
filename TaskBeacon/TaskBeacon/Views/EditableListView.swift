@@ -243,18 +243,19 @@ struct EditableListView: View {
                                 Image(systemName: "exclamationmark.triangle")
                                     .foregroundColor(.orange)
                                     .font(.system(size: 16))
-                                    .modifier(PulseAnimation(isPulsing: isPulsingInfoButton))
+                                    .scaleEffect(isPulsingInfoButton ? 1.3 : 1.0)
+                                    .opacity(isPulsingInfoButton ? 0.6 : 1.0)
                             }
-                            .buttonStyle(BorderlessButtonStyle()) // Prevents tap conflicts
+                            .buttonStyle(BorderlessButtonStyle())
                             .onAppear {
-                                // Start subtle pulse animation
-                                withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                                    isPulsingInfoButton = true
+                                // Start the pulsing animation
+                                Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                                    withAnimation(.easeInOut(duration: 1.0)) {
+                                        isPulsingInfoButton.toggle()
+                                    }
                                 }
                             }
                             
-                          //  Image(systemName: "exclamationmark.triangle")
-                             //   .foregroundColor(.orange)
                             Text("Items without assigned stores")
                                 .font(.headline)
                                 .foregroundColor(.orange)
@@ -270,7 +271,7 @@ struct EditableListView: View {
                     Alert(
                         title: Text("Store Assignment"),
                         message: Text("Items without assigned stores won't trigger location-based reminders. Assign stores to receive notifications when you're near a store location."),
-                        dismissButton: .default(Text("Got it"))
+                        dismissButton: .default(Text("Ok"))
                     )
                 }
             }
@@ -954,10 +955,21 @@ struct EditableListView: View {
                             try viewContext.save()
                             print("💾 Successfully saved to Core Data")
                             
-                            // Use our new specialized grouping method
-                            shoppingListViewModel.updateGroupedItemsWithDistinctLocations()
-                            print("🔄 Called updateGroupedItemsWithDistinctLocations")
-                            
+                            DispatchQueue.main.async {
+                                // First, fetch fresh data from Core Data
+                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
+                                if let items = try? viewContext.fetch(request) {
+                                    // Update the view model's data
+                                    shoppingListViewModel.shoppingItems = items
+                                    
+                                    // Clear and rebuild the groupings
+                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
+                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
+                                    
+                                    // Force view refresh
+                                    refreshTrigger = UUID()
+                                }
+                            }
                         } catch {
                             print("❌ Error saving to Core Data: \(error)")
                         }
@@ -1270,6 +1282,7 @@ struct EditableListView: View {
                 self.shoppingListViewModel.shoppingItems = items
                 
                 // Clear and rebuild the groupings
+                print("debug1")
                 self.shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
                 self.shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
                 

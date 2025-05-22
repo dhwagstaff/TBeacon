@@ -48,6 +48,8 @@ struct AddEditShoppingItemView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     
+    @FocusState private var isNameFocused: Bool // New focus state
+    
     @Binding var showAddShoppingItem: Bool
     @Binding var isShowingAnySheet: Bool
     @Binding var navigateToEditableList: Bool
@@ -56,28 +58,22 @@ struct AddEditShoppingItemView: View {
     
     // In AddEditShoppingItemView.swift
     private var isOverFreeLimit: Bool {
-        guard !entitlementManager.isPremiumUser else { return false }
-        guard shoppingItem == nil else { return false } // Allow editing existing items
-        
-        let context = PersistenceController.shared.container.viewContext
-        let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-        let todoRequest = NSFetchRequest<ToDoItemEntity>(entityName: CoreDataEntities.toDoItem.stringValue)
-        
-        do {
-            let shoppingCount = try context.count(for: shoppingRequest)
-            let todoCount = try context.count(for: todoRequest)
-            return (shoppingCount + todoCount) >= 5
-        } catch {
-            print("Error checking item limit: \(error.localizedDescription)")
-            return true // Prevent creation if we can't verify the count
-        }
+        FreeLimitChecker.isOverFreeLimit(
+            isPremiumUser: entitlementManager.isPremiumUser,
+            isEditingExistingItem: shoppingItem != nil
+        )
+    }
+
+    private var canSave: Bool {
+        guard !name.isEmpty, !selectedCategory.isEmpty else { return false }
+        return true
     }
 
     init(navigateToEditableList: Binding<Bool>,
          showAddShoppingItem: Binding<Bool>,
          isShowingAnySheet: Binding<Bool>,
-         shoppingItem: ShoppingItemEntity? = nil) {
-        
+         shoppingItem: ShoppingItemEntity? = nil
+    ) {
         // Initialize bindings
         self._navigateToEditableList = navigateToEditableList
         self._showAddShoppingItem = showAddShoppingItem
@@ -110,11 +106,6 @@ struct AddEditShoppingItemView: View {
         }
     }
     
-    private var canSave: Bool {
-        guard !name.isEmpty, !selectedCategory.isEmpty else { return false }
-        return true
-    }
-    
     // MARK: - Main View Body
     var body: some View {
         NavigationView {
@@ -132,6 +123,7 @@ struct AddEditShoppingItemView: View {
 
                         // Item Name Section
                         ItemNameSection(name: $name, isEditingText: $isEditingText)
+                            .focused($isNameFocused)
                         
                         // Expiration Date Section (conditional)
                         if Constants.perishableCategories.contains(selectedCategory) {
@@ -142,9 +134,15 @@ struct AddEditShoppingItemView: View {
                         }
 
                         // Category Picker Section
-                        CategoryPickerSection(selectedCategoryEmoji: $selectedCategoryEmoji,
-                            selectedCategory: $selectedCategory,
-                                              selectedCategoryFromGroceryFood: $selectedCategoryFromGroceryFood)
+                        ZStack {
+                            CategoryPickerSection(selectedCategoryEmoji: $selectedCategoryEmoji,
+                                                 selectedCategory: $selectedCategory,
+                                                 selectedCategoryFromGroceryFood: $selectedCategoryFromGroceryFood)
+                        }
+                        .simultaneousGesture(TapGesture().onEnded { _ in
+                            isNameFocused = false // Dismiss keyboard
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) // Force keyboard dismissal
+                        })
 
                         // Store Picker Section
                         StorePickerSection(storeName: $storeName,
@@ -190,6 +188,7 @@ struct AddEditShoppingItemView: View {
                             if self.locationManager.stores.isEmpty {
                                 await self.locationManager.performDirectMapKitSearch()
                             }
+                            
                             // Trigger a state update to force refresh
                             await MainActor.run {
                                 self.forceRefresh.toggle()
@@ -321,9 +320,6 @@ struct AddEditShoppingItemView: View {
             // CRITICAL: All Core Data operations need to happen on the main thread
             await MainActor.run {
                 do {
-                    // First, create or update the shopping item entity
-                    var uid: String = Constants.emptyString
-                    
                     let itemToSave: ShoppingItemEntity
                     
                     if let existingItem = shoppingItem {
@@ -371,38 +367,29 @@ struct AddEditShoppingItemView: View {
                     // Now save the context
                     try viewContext.save()
                     
-                    // Immediately fetch fresh data (still on main thread)
-                    do {
-                        let fetchRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-                        let items = try self.viewContext.fetch(fetchRequest)
-                        
-                        // If this was a store assignment, clear the grouping dictionary to force rebuild
-                        if isStoreAssignment {
-                            self.storeName = ""
-                            self.storeAddress = ""
-                            self.selectedStore = nil
-                            self.latitude = nil
-                            self.longitude = nil
-                        }
-                        
-                        // Update grouping without triggering more fetches
-                        viewModel.updateGroupedItemsInternal()
-                        
-                        if let uid = itemToSave.uid {
-                            locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid)
-                            
-                            locationManager.regionIDToItemMap[uid] = itemToSave
-                        }
-                        
-                        // Update view model state directly
-                        viewModel.objectWillChange.send()
-                        
-                        // Dismiss the sheet after saving is complete
-                        dismissSheet()
-                        
-                    } catch {
-                        print("❌ Error fetching updated items: \(error.localizedDescription)")
+                    // If this was a store assignment, clear the grouping dictionary to force rebuild
+                    if isStoreAssignment {
+                        self.storeName = ""
+                        self.storeAddress = ""
+                        self.selectedStore = nil
+                        self.latitude = nil
+                        self.longitude = nil
                     }
+                    
+                    // Update grouping without triggering more fetches
+                    viewModel.updateGroupedItemsInternal()
+                    
+                    if let uid = itemToSave.uid {
+                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid)
+                        
+                        locationManager.regionIDToItemMap[uid] = itemToSave
+                    }
+                    
+                    // Update view model state directly
+                    viewModel.objectWillChange.send()
+                    
+                    // Dismiss the sheet after saving is complete
+                    dismissSheet()
                 } catch {
                     print("❌ Error saving to Core Data on main thread: \(error.localizedDescription)")
                 }
@@ -438,7 +425,6 @@ struct AddEditShoppingItemView: View {
     }
 }
 
-#if DEBUG
 struct AddEditShoppingItemView_Previews: PreviewProvider {
     static var previews: some View {
         let navigateBinding = Binding.constant(false)
@@ -453,4 +439,3 @@ struct AddEditShoppingItemView_Previews: PreviewProvider {
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
     }
 }
-#endif
