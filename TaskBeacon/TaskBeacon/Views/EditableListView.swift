@@ -327,7 +327,8 @@ struct EditableListView: View {
             // Skip the "Other" category since we already displayed it
             if store != "Other" && !store.isEmpty {
                 Section {
-                    DisclosureGroup(store) {
+                    DisclosureGroup {
+                        // Categories and items
                         if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[store] {
                             ForEach(Array(categories.keys.sorted()), id: \.self) { category in
                                 if let items = categories[category], !items.isEmpty {
@@ -348,6 +349,20 @@ struct EditableListView: View {
                                 }
                             }
                         }
+                    } label: {
+                        // Store name and address in the same row
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(store)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            if let firstItem = shoppingListViewModel.groupedItemsByStoreAndCategory[store]?.values.first?.first,
+                               let storeAddress = firstItem.storeAddress {
+                                Text(storeAddress)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                     .background(Color(.systemBackground))
                     .listRowBackground(Color(.systemBackground))
@@ -356,6 +371,95 @@ struct EditableListView: View {
             }
         }
     }
+    
+//    @ViewBuilder
+//    private var assignedItemsSection: some View {
+//        // Then show items with assigned stores (everything except "Other")
+//        ForEach(Array(shoppingListViewModel.groupedItemsByStoreAndCategory.keys.sorted()), id: \.self) { store in
+//            // Skip the "Other" category since we already displayed it
+//            if store != "Other" && !store.isEmpty {
+//                Section {
+//                    DisclosureGroup {
+//                        // Store address
+//                        if let firstItem = shoppingListViewModel.groupedItemsByStoreAndCategory[store]?.values.first?.first,
+//                           let storeAddress = firstItem.storeAddress {
+//                            Text(storeAddress)
+//                                .font(.subheadline)
+//                                .foregroundColor(.secondary)
+//                                .padding(.leading)
+//                                .padding(.bottom, 8)
+//                        }
+//                        
+//                        // Categories and items
+//                        if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[store] {
+//                            ForEach(Array(categories.keys.sorted()), id: \.self) { category in
+//                                if let items = categories[category], !items.isEmpty {
+//                                    // Category header - match the same pattern as todo items
+//                                    DisclosureGroup(
+//                                        isExpanded: Binding(
+//                                            get: { expandedCategoryMap["\(store)_\(category)"] ?? false },
+//                                            set: { expandedCategoryMap["\(store)_\(category)"] = $0 }
+//                                        ),
+//                                        content: {
+//                                            shoppingItemsList(items: items)
+//                                        },
+//                                        label: {
+//                                            categoryLabel(category: category, items: items)
+//                                        }
+//                                    )
+//                                    .id("\(store)-\(category)-\(refreshTrigger)")
+//                                }
+//                            }
+//                        }
+//                    } label: {
+//                        // Store name as the main header
+//                        Text(store)
+//                            .font(.headline)
+//                            .foregroundColor(.primary)
+//                    }
+//                    .background(Color(.systemBackground))
+//                    .listRowBackground(Color(.systemBackground))
+//                }
+//                .id("store-section-\(store)-\(refreshTrigger)")
+//            }
+//        }
+//    }
+    
+//    private var assignedItemsSection: some View {
+//        // Then show items with assigned stores (everything except "Other")
+//        ForEach(Array(shoppingListViewModel.groupedItemsByStoreAndCategory.keys.sorted()), id: \.self) { store in
+//            // Skip the "Other" category since we already displayed it
+//            if store != "Other" && !store.isEmpty {
+//                Section {
+//                    DisclosureGroup(store) {
+//                        if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[store] {
+//                            ForEach(Array(categories.keys.sorted()), id: \.self) { category in
+//                                if let items = categories[category], !items.isEmpty {
+//                                    // Category header - match the same pattern as todo items
+//                                    DisclosureGroup(
+//                                        isExpanded: Binding(
+//                                            get: { expandedCategoryMap["\(store)_\(category)"] ?? false },
+//                                            set: { expandedCategoryMap["\(store)_\(category)"] = $0 }
+//                                        ),
+//                                        content: {
+//                                            shoppingItemsList(items: items)
+//                                        },
+//                                        label: {
+//                                            categoryLabel(category: category, items: items)
+//                                        }
+//                                    )
+//                                    .id("\(store)-\(category)-\(refreshTrigger)")
+//                                }
+//                            }
+//                        }
+//                    }
+//                    .background(Color(.systemBackground))
+//                    .listRowBackground(Color(.systemBackground))
+//                }
+//                .id("store-section-\(store)-\(refreshTrigger)")
+//            }
+//        }
+//    }
     
     // Reusable view for shopping items list
     @ViewBuilder

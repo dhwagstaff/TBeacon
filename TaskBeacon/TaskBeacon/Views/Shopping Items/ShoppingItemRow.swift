@@ -61,9 +61,12 @@ struct ShoppingItemRow: View {
                     }
 
                     if let storeName = item.storeName, !storeName.isEmpty {
-                        Text("Store: \(storeName)")
-                            .font(.subheadline)
-                            .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+                        // Only show store name if this item is in the "Other" or unassigned group
+                        if item.storeName == nil || item.storeName?.isEmpty == true {
+                            Text("Store: \(storeName)")
+                                .font(.subheadline)
+                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+                        }
                     } else {
                         Text("⚠️ No store assigned")
                             .font(.subheadline)
@@ -73,13 +76,17 @@ struct ShoppingItemRow: View {
                                 colorScheme == .dark ?
                                     Color.orange.opacity(0.15) :
                                     Color.orange.opacity(0.1)
-                            )                            .cornerRadius(6)
+                            )
+                            .cornerRadius(6)
                     }
 
                     if let storeAddress = item.storeAddress, !storeAddress.isEmpty {
-                        Text("Address: \(storeAddress)")
-                            .font(.caption)
-                            .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+                        // Only show address if this item is in the "Other" or unassigned group
+                        if item.storeName == nil || item.storeName?.isEmpty == true {
+                            Text("Address: \(storeAddress)")
+                                .font(.caption)
+                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+                        }
                     }
                 }
 
