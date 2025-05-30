@@ -62,8 +62,10 @@ class ToDoListViewModel: ListsViewModel {
         let context = viewContext
         
         do {
-            try context.save()
-            print("📍 Saved item with location - Lat: \(item.latitude), Lon: \(item.longitude)")
+            try await MainActor.run {
+                try context.save()
+                print("📍 Saved item with location - Lat: \(item.latitude), Lon: \(item.longitude)")
+            }
             
             await MainActor.run {
                 self.fetchToDoItems()

@@ -25,8 +25,8 @@ struct AddEditToDoItemView: View {
     @State private var searchQuery = ""  // New state for the search query
     @State private var taskName: String = ""
     @State private var addressOrLocationName: String = ""
-    @State private var latitude: Double = 0
-    @State private var longitude: Double = 0
+    @State private var latitude: Double? = 0
+    @State private var longitude: Double? = 0
     @State private var needsLocation = false
     @State private var showMapPicker = false
     @State private var selectedCategory: String = "Uncategorized Item"
@@ -40,7 +40,7 @@ struct AddEditToDoItemView: View {
     @State private var locationData = LocationData(searchQuery: "", formattedAddress: "")
     @State private var didSaveLocation = false
     @State private var locationSelectedFromSearch = false
-
+    
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
     @Binding var navigateToEditableList: Bool
@@ -84,8 +84,15 @@ struct AddEditToDoItemView: View {
         _dueDate = State(initialValue: toDoItem?.dueDate ?? Date())
         _priority = State(initialValue: toDoItem?.priority ?? 2)
         _addressOrLocationName = State(initialValue: toDoItem?.addressOrLocationName ?? "")
-        _latitude = State(initialValue: toDoItem?.latitude ?? 0.0)
-        _longitude = State(initialValue: toDoItem?.longitude ?? 0.0)
+        
+        if let lat = toDoItem?.latitude, let lon = toDoItem?.longitude {
+            _latitude = State(initialValue: lat)
+            _longitude = State(initialValue: lon)
+        } else {
+            _latitude = State(initialValue: LocationManager.shared.userLocation?.coordinate.latitude ?? 0.0)
+            _longitude = State(initialValue: LocationManager.shared.userLocation?.coordinate.longitude ?? 0.0)
+        }
+
         _needsLocation = State(initialValue: toDoItem?.latitude != nil && toDoItem?.longitude != nil)
     }
 
@@ -144,8 +151,6 @@ struct AddEditToDoItemView: View {
                             Toggle("Item Needs Location", isOn: $needsLocation)
                                 .onChange(of: needsLocation) {
                                     if !needsLocation {
-                                        latitude = 0
-                                        longitude = 0
                                         viewModel.selectedLocationName = Constants.emptyString
                                     } else {
                                         showMapPicker = true
@@ -188,13 +193,21 @@ struct AddEditToDoItemView: View {
                         .disabled(taskName.isEmpty)
                 )
                 .sheet(isPresented: $showMapPicker) {
-                    MapViewWrapper(
-                        latitude: $latitude,
-                        longitude: $longitude,
-                        storeName: storeNameBinding,
-                        storeAddress: storeAddressBinding,
-                        isForToDoItem: true
-                    )
+                    MapSearchView(address: $address,
+                                  latitude: $latitude,
+                                  longitude: $longitude,
+                                  showMapPicker: $showMapPicker,
+                                  needsLocation: $needsLocation)
+                    .onDisappear {
+                        addressOrLocationName = address
+                    }
+                    .onChange(of: showMapPicker) {
+                        if !showMapPicker {  // When sheet is dismissed
+                            if latitude == 0 && longitude == 0 {
+                                needsLocation = false
+                            }
+                        }
+                    }
                 }
                 .onChange(of: viewModel.selectedLocationAddress) {
                     if !viewModel.selectedLocationName.isEmpty {
@@ -253,8 +266,8 @@ struct AddEditToDoItemView: View {
                                                               addressOrLocationName: needsLocation ? addressOrLocationName : Constants.emptyString,
                                                               lastUpdate: Date(),
                                                               lastEditor: Constants.emptyString,
-                                                              latitude: needsLocation ? viewModel.latitude : latitude,
-                                                              longitude: needsLocation ? viewModel.longitude : longitude,
+                                                              latitude: needsLocation ? viewModel.latitude : latitude ?? 0,
+                                                              longitude: needsLocation ? viewModel.longitude : longitude ?? 0,
                                                               isCompleted: false,
                                                               dueDate: dueDate,
                                                               priority: priority))
@@ -266,8 +279,8 @@ struct AddEditToDoItemView: View {
                     item.addressOrLocationName = needsLocation ? addressOrLocationName : Constants.emptyString
                     item.lastUpdated = Date()
                     item.lastEditor = Constants.emptyString
-                    item.latitude = needsLocation ? viewModel.latitude : latitude
-                    item.longitude = needsLocation ? viewModel.longitude : longitude
+                    item.latitude = needsLocation ? viewModel.latitude : latitude ?? 0
+                    item.longitude = needsLocation ? viewModel.longitude : longitude ?? 0
                     item.dueDate = dueDate
                     item.priority = priority
                     
