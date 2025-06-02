@@ -20,6 +20,7 @@ class ShoppingListViewModel: ListsViewModel {
     @Published var isFetchingStores = false
     @Published var selectedStoreForNewItem: MKMapItem? = nil // 🆕
     @Published var emojiMap: [String: String] = [:]
+    @Published var categoryOrder: [String] = []
     
     private let viewContext: NSManagedObjectContext
     private let locationManager: LocationManager
@@ -444,9 +445,9 @@ class ShoppingListViewModel: ListsViewModel {
         }
         
         // Save the item to Core Data
-        Task {
-            await saveShoppingItem(item: item)
-        }
+//        Task {
+//            await saveShoppingItemToCoreData(item: item)
+//        }
         
         if !completed {
             if let locationIdentifier = item.value(forKey: "uid") as? String {
@@ -514,7 +515,148 @@ class ShoppingListViewModel: ListsViewModel {
         return emojiMap
     }
     
-    func saveShoppingItem(item: ShoppingItemEntity) async {
+    func processStores(searchQuery: String, selectedCategoryIndex: Int) -> [String: [StoreOption]] {
+        // Create a cache key based on current state
+        let cacheKey = "\(selectedCategoryIndex)-\(searchQuery)"
+        
+        // Clear cache if it's the first time or if stores have changed
+        if UnifiedStoreSelectionView.processedStoresCache.isEmpty || locationManager.stores.count != UnifiedStoreSelectionView.processedStoresCache.values.first?.values.first?.count {
+            UnifiedStoreSelectionView.processedStoresCache.removeAll()
+        }
+        
+        // Check if we have cached results for this state
+        if let cachedResults = UnifiedStoreSelectionView.processedStoresCache[cacheKey] {
+            // Only return cached results if they're not empty
+            if !cachedResults.isEmpty {
+                return cachedResults
+            }
+        }
+        
+        // Get all store options once
+        let allStoreOptions = locationManager.stores.compactMap { locationManager.createStoreOption(from: $0) }
+                
+        // Filter based on search query if needed
+        let storesToConsider: [StoreOption] = {
+            if !searchQuery.isEmpty {
+                return allStoreOptions.filter { store in
+                    let nameMatches = store.name.lowercased().contains(searchQuery.lowercased())
+                    let addressMatches = store.address.lowercased().contains(searchQuery.lowercased())
+                    return nameMatches || addressMatches
+                }
+            } else {
+                return allStoreOptions
+            }
+        }()
+
+        // First group by category
+//        var groupedStores = Dictionary(grouping: storesToConsider, by: { $0.category })
+        
+        // Add preferred stores category if there are any
+        let context = PersistenceController.shared.container.viewContext
+
+        let updatedStoresToConsider: [StoreOption] = storesToConsider.map { store in
+            let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
+                                                 store.name, store.address)
+            var updatedStore = store
+            if let items = try? context.fetch(fetchRequest),
+               let firstItem = items.first {
+                updatedStore.isPreferred = firstItem.isPreferred
+            } else {
+                updatedStore.isPreferred = false
+            }
+            return updatedStore
+        }
+        
+        // 1. Separate preferred and non-preferred stores
+        let preferredStores = updatedStoresToConsider.filter { $0.isPreferred }
+        let nonPreferredStores = updatedStoresToConsider.filter { !$0.isPreferred }
+
+        // 2. Group only non-preferred stores by category
+        var groupedStores = Dictionary(grouping: nonPreferredStores, by: { $0.category })
+
+        // 3. Add preferred stores as their own category
+        if !preferredStores.isEmpty {
+            groupedStores["Preferred Stores"] = preferredStores
+        }
+
+        // 4. Remove any empty categories (defensive, in case of edge cases)
+        groupedStores = groupedStores.filter { !$0.value.isEmpty }
+        
+        // Then sort each category's stores by distance
+        let sortedGroupedStores = groupedStores.mapValues { stores in
+            sortStoreOptions(stores)
+        }
+
+        // Defensive: If no categories, return all
+        guard !activeCategories.isEmpty else { return sortedGroupedStores }
+        
+        let safeIndex = (selectedCategoryIndex >= 0 && selectedCategoryIndex < categoryOrder.count) ? selectedCategoryIndex : 0
+        let selectedCategory = categoryOrder[safeIndex]
+
+        let result: [String: [StoreOption]]
+        if selectedCategory == Constants.allStores {
+            // For "All Stores", return the complete groupedStores dictionary
+            // Ensure Preferred Stores is first
+            var orderedResult = [String: [StoreOption]]()
+            if let preferred = sortedGroupedStores["Preferred Stores"] {
+                orderedResult["Preferred Stores"] = preferred
+            }
+            // Add all other categories
+            for (key, value) in sortedGroupedStores where key != "Preferred Stores" {
+                orderedResult[key] = value
+            }
+            result = orderedResult
+        } else {
+            // For specific categories, still show preferred stores first
+            var orderedResult = [String: [StoreOption]]()
+            if let preferred = sortedGroupedStores["Preferred Stores"] {
+                orderedResult["Preferred Stores"] = preferred
+            }
+            // Then add the selected category's stores
+            if let stores = sortedGroupedStores[selectedCategory] {
+                orderedResult[selectedCategory] = stores
+            }
+            result = orderedResult
+        }
+        
+        // Only cache if we have results
+        if !result.isEmpty {
+            Self.updateCache(key: cacheKey, value: result)
+        }
+        
+        return result
+    }
+    
+    private static func updateCache(key: String, value: [String: [StoreOption]]) {
+        UnifiedStoreSelectionView.processedStoresCache[key] = value
+    }
+    
+    private func sortStoreOptions(_ options: [StoreOption]) -> [StoreOption] {
+        return options.sorted { a, b in
+            // Get user location
+//            guard let userLocation = locationManager.userLocationManager?.location else {
+            guard let userLocation = locationManager.userLocation else {
+                return a.name < b.name // Fallback to alphabetical if no location
+            }
+            
+            // Calculate distances
+            let distanceA = userLocation.distance(from: CLLocation(
+                latitude: a.mapItem.placemark.coordinate.latitude,
+                longitude: a.mapItem.placemark.coordinate.longitude
+            ))
+            
+            let distanceB = userLocation.distance(from: CLLocation(
+                latitude: b.mapItem.placemark.coordinate.latitude,
+                longitude: b.mapItem.placemark.coordinate.longitude
+            ))
+            
+            // Sort by distance
+            return distanceA < distanceB
+        }
+    }
+    
+    func saveShoppingItemToCoreData(item: ShoppingItemEntity) async {
         do {
             // Check if this is a store assignment
             let isStoreAssignment = item.storeName != nil && !item.storeName!.isEmpty

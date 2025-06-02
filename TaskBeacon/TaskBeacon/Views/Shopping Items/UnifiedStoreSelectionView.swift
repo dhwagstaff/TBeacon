@@ -11,6 +11,9 @@ struct UnifiedStoreSelectionView: View {
     
     @EnvironmentObject private var dataUpdateManager: DataUpdateManager
     @EnvironmentObject var locationManager: LocationManager
+    @EnvironmentObject var viewModel: ShoppingListViewModel
+    
+    static var processedStoresCache: [String: [String: [StoreOption]]] = [:]
     
     // State variables
     @State private var searchText = Constants.emptyString
@@ -43,20 +46,10 @@ struct UnifiedStoreSelectionView: View {
     @Binding var selectedStore: MKMapItem?
     @Binding var latitude: Double?
     @Binding var longitude: Double?
-    
-    static var processedStoresCache: [String: [String: [StoreOption]]] = [:]
-
-//    private let categories = [Constants.allStores,
-//                              Constants.generalMerchandise,
-//                              Constants.groceryAndFood,
-//                              "Clothing & Apparel",
-//                              "Electronics",
-//                              "Home Improvement",
-//                              "Health & Beauty",
-//                              "Specialty Stores"]
+    @Binding var isPreferred: Bool
     
     private let categories = StoreCategory.allCases.map { $0.displayName }
-    
+        
     init(searchQuery: String = Constants.emptyString,
          cannotFetch: Bool = false,
          selectedCategoryIndex: Int = -1,
@@ -74,7 +67,8 @@ struct UnifiedStoreSelectionView: View {
          storeAddress: Binding<String>,
          selectedStore: Binding<MKMapItem?>,
          latitude: Binding<Double?>,
-         longitude: Binding<Double?>) {
+         longitude: Binding<Double?>,
+         isPreferred: Binding<Bool>) {
         self.searchQuery = searchQuery
         self.cannotFetch = cannotFetch
         self.selectedCategoryIndex = selectedCategoryIndex
@@ -93,9 +87,21 @@ struct UnifiedStoreSelectionView: View {
         self._selectedStore = selectedStore
         self._latitude = latitude
         self._longitude = longitude
+        self._isPreferred = isPreferred
+    }
+    
+    var preferredBanner: some View {
+        LinearGradient(
+            colors: [Color(hex: "FFD300"), Color(hex: "005D5D").opacity(0.8)],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(height: 20).clipShape(RoundedCorner(radius: 12, corners: [.topLeft, .topRight]))
     }
     
     var body: some View {
+        let groupedStores = viewModel.processStores(searchQuery: searchQuery, selectedCategoryIndex: selectedCategoryIndex)
+        
         NavigationView {
             ZStack {
                 Color.gray.opacity(0.1)
@@ -103,13 +109,28 @@ struct UnifiedStoreSelectionView: View {
                 
                 VStack(spacing: 0) {
                     searchField
-                    categoryFilters
                     
+                    if let preferredStores = groupedStores["Preferred Stores"], !preferredStores.isEmpty {
+                        StoreCategoryView(
+                            category: "Preferred Stores",
+                            stores: preferredStores,
+                            searchQuery: searchQuery,
+                            selectedCategoryIndex: selectedCategoryIndex,
+                            onStoreSelected: selectStore,
+                            userLocation: locationManager.userLocation,
+                            locationManager: locationManager
+                        )
+                        .padding([.leading, .trailing], 2)
+                        .padding(.top, 5)
+                    }
+                                        
                     Rectangle()
                         .fill(Color.gray.opacity(0.3))
                         .frame(height: 1)
                         .padding(.horizontal)
-
+                        .padding([.top, .bottom], 10)
+                    
+                    categoryFilters
                     storeListView
                     statusMessagesView
                 }
@@ -131,34 +152,30 @@ struct UnifiedStoreSelectionView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        .onAppear {
-            // Only reset if needed
+        .onChange(of: locationManager.stores) {
+            // Update active categories when stores change
+            updateActiveCategories()
+        }
+        .task {
+            // UI State Resets (from .onAppear)
             if selectedCategoryIndex != 0 {
                 selectedCategoryIndex = 0
             }
             if selectedStoreFilter != Constants.allStores {
                 selectedStoreFilter = Constants.allStores
             }
-                    
-            if locationManager.stores.isEmpty {
-                Task {
-                    await locationManager.searchNearbyStores(userQuery: searchQuery)
-                }
-            }
             
-            updateActiveCategories()
-        }
-        .onChange(of: locationManager.stores) {
-            // Update active categories when stores change
-            updateActiveCategories()
-        }
-        .task {
-            // Only load stores if empty
+            // Data Loading (from both .onAppear and .task)
             if locationManager.stores.isEmpty {
+                // Load stores
                 await locationManager.loadStores()
                 locationManager.consolidateDuplicateStores()
+                
+                // Search nearby stores if needed
+                await locationManager.searchNearbyStores(userQuery: searchQuery)
             }
             
+            // Update categories (from both)
             updateActiveCategories()
         }
         .onChange(of: searchQuery) {
@@ -224,12 +241,12 @@ struct UnifiedStoreSelectionView: View {
     private var categoryFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                ForEach(0..<activeCategories.count, id: \.self) { index in
-                    StoreFilterButton(name: activeCategories[index],
+                ForEach(0..<viewModel.categoryOrder.count, id: \.self) { index in
+                    StoreFilterButton(name: viewModel.categoryOrder[index],
                                       isSelected: index == selectedCategoryIndex
                     ) {
                         selectedCategoryIndex = index
-                        selectedStoreFilter = activeCategories[index]
+                        selectedStoreFilter = viewModel.categoryOrder[index]
                     }
                 }
             }
@@ -239,23 +256,38 @@ struct UnifiedStoreSelectionView: View {
     }
     
     private var storeListView: some View {
-        let groupedStores = processStores()
+        let groupedStores = viewModel.processStores(searchQuery: searchQuery, selectedCategoryIndex: selectedCategoryIndex)
         
         return ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(groupedStores.keys.sorted(), id: \.self) { category in
+            if selectedStoreFilter == Constants.allStores {
+                // Show all non-preferred categories
+                ForEach(viewModel.categoryOrder.filter { $0 != "Preferred Stores" && $0 != Constants.allStores }, id: \.self) { category in
                     if let stores = groupedStores[category], !stores.isEmpty {
                         StoreCategoryView(
                             category: category,
                             stores: stores,
+                            searchQuery: searchQuery,
+                            selectedCategoryIndex: selectedCategoryIndex,
                             onStoreSelected: selectStore,
                             userLocation: locationManager.userLocation,
                             locationManager: locationManager
                         )
                     }
                 }
+            } else if selectedStoreFilter != "Preferred Stores" {
+                // Show only the selected category
+                if let stores = groupedStores[selectedStoreFilter], !stores.isEmpty {
+                    StoreCategoryView(
+                        category: selectedStoreFilter,
+                        stores: stores,
+                        searchQuery: searchQuery,
+                        selectedCategoryIndex: selectedCategoryIndex,
+                        onStoreSelected: selectStore,
+                        userLocation: locationManager.userLocation,
+                        locationManager: locationManager
+                    )
+                }
             }
-            .padding(.vertical, 8)
         }
         .background(Color.gray.opacity(0.1))
     }
@@ -263,6 +295,8 @@ struct UnifiedStoreSelectionView: View {
     private struct StoreCategoryView: View {
         let category: String
         let stores: [StoreOption]
+        let searchQuery: String
+        let selectedCategoryIndex: Int
         let onStoreSelected: (StoreOption) -> Void
         let userLocation: CLLocation?
         let locationManager: LocationManager
@@ -274,6 +308,7 @@ struct UnifiedStoreSelectionView: View {
                         .foregroundColor(.white)
                         .padding(6)
                         .background(Circle().fill(Color.blue))
+                        .padding(.top, 3)
                     
                     Text(category)
                         .font(.headline)
@@ -290,11 +325,15 @@ struct UnifiedStoreSelectionView: View {
                 
                 LazyVStack(spacing: 0) {
                     ForEach(stores) { store in
-                        StoreRowView(
-                            store: store,
-                            userLocation: userLocation,
-                            locationManager: locationManager,
-                            onSelect: { onStoreSelected(store) }
+                        StoreRowView(store: store,
+                                     category: category,
+                                     searchQuery: searchQuery,
+                                     selectedCategoryIndex: selectedCategoryIndex,
+                                     userLocation: userLocation,
+                                     locationManager: locationManager,
+                                     onSelect: {
+                                        onStoreSelected(store)
+                                    }
                         )
                         
                         if store.id != stores.last?.id {
@@ -312,44 +351,89 @@ struct UnifiedStoreSelectionView: View {
     }
 
     private struct StoreRowView: View {
+        @EnvironmentObject var viewModel: ShoppingListViewModel
+
         let store: StoreOption
+        let category: String
+        let searchQuery: String
+        let selectedCategoryIndex: Int
         let userLocation: CLLocation?
         let locationManager: LocationManager
         let onSelect: () -> Void
         
         var body: some View {
-            Button(action: onSelect) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(store.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Text(store.address)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .lineLimit(2)
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(store.name)
+                        .font(.headline)
+                        .foregroundColor(.primary)
                     
-                    Spacer()
-                    
-                   if let userLocation = locationManager.userLocation {
-                        let distance = userLocation.distance(from: CLLocation(
-                            latitude: store.mapItem.placemark.coordinate.latitude,
-                            longitude: store.mapItem.placemark.coordinate.longitude
-                        ))
-                        Text(formatDistance(distance))
-                            .font(.subheadline)
-                            .foregroundColor(.blue)
+                    Text(store.address)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(2)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer()
+                
+                if store.isPreferred {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(.yellow)
+                        .padding(.trailing, 8)
+                } else {
+                    Button(action: {
+                        Task {
+                            let context = PersistenceController.shared.container.viewContext
+                            let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+                            fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
+                                                                 store.name, store.address)
+
+                            if let items = try? context.fetch(fetchRequest), let item = items.first {
+                                // Existing item: update
+                                item.isPreferred = true
+                                await viewModel.saveShoppingItemToCoreData(item: item)
+                            } else {
+                                // New item: create and set preferred
+                                let newItem = ShoppingItemEntity(context: context)
+                                newItem.storeName = store.name
+                                newItem.storeAddress = store.address
+                                newItem.isPreferred = true
+                                // Set other required fields as needed
+                                await viewModel.saveShoppingItemToCoreData(item: newItem)
+                            }
+                            
+                            viewModel.processStores(searchQuery: searchQuery, selectedCategoryIndex: selectedCategoryIndex)
+                        }
+                    }) {
+                        Image(systemName: "star")
+                            .foregroundColor(.yellow)
                             .padding(.trailing, 8)
                     }
                 }
+                
+                if let userLocation = locationManager.userLocation {
+                    let distance = userLocation.distance(from: CLLocation(
+                        latitude: store.mapItem.placemark.coordinate.latitude,
+                        longitude: store.mapItem.placemark.coordinate.longitude
+                    ))
+                    Text(formatDistance(distance))
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .padding(.trailing, 8)
+                }
             }
-            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onSelect()
+            }
+            .onAppear {
+                print("Store: \(store.name), Category: \(category)")
+               // store.isPreferred = (category == "Preferred Stores")
+            }
         }
         
         private func formatDistance(_ distance: CLLocationDistance) -> String {
@@ -545,9 +629,6 @@ struct UnifiedStoreSelectionView: View {
         
         print("in selectStore storeName ::: \(storeName) ::: storeAddress ::: \(storeAddress)")
         
-        // Post notification that a store was selected
-      //  NotificationCenter.default.post(name: NSNotification.Name("StoreSelected"), object: nil)
-        
         self.isPresented = false
     }
     
@@ -560,82 +641,6 @@ struct UnifiedStoreSelectionView: View {
         }
     }
     
-    // MARK: - Store Processing Methods
-    
-    private func processStores() -> [String: [StoreOption]] {
-        // Create a cache key based on current state
-        let cacheKey = "\(selectedCategoryIndex)-\(searchQuery)"
-        
-        // Clear cache if it's the first time or if stores have changed
-        if UnifiedStoreSelectionView.processedStoresCache.isEmpty || locationManager.stores.count != UnifiedStoreSelectionView.processedStoresCache.values.first?.values.first?.count {
-            UnifiedStoreSelectionView.processedStoresCache.removeAll()
-        }
-        
-        // Check if we have cached results for this state
-        if let cachedResults = UnifiedStoreSelectionView.processedStoresCache[cacheKey] {
-            // Only return cached results if they're not empty
-            if !cachedResults.isEmpty {
-                return cachedResults
-            }
-        }
-        
-        // Get all store options once
-        let allStoreOptions = locationManager.stores.compactMap { locationManager.createStoreOption(from: $0) }
-        
-        // Filter based on search query if needed
-        let storesToConsider: [StoreOption] = {
-            if !searchQuery.isEmpty {
-                return allStoreOptions.filter { store in
-                    let nameMatches = store.name.lowercased().contains(searchQuery.lowercased())
-                    let addressMatches = store.address.lowercased().contains(searchQuery.lowercased())
-                    return nameMatches || addressMatches
-                }
-            } else {
-                return allStoreOptions
-            }
-        }()
-
-        // First group by category
-        let groupedStores = Dictionary(grouping: storesToConsider, by: { $0.category })
-        
-        // Then sort each category's stores by distance
-        let sortedGroupedStores = groupedStores.mapValues { stores in
-            sortStoreOptions(stores)
-        }
-
-        // Defensive: If no categories, return all
-        guard !activeCategories.isEmpty else { return sortedGroupedStores }
-
-        // Defensive: If index is out of bounds, reset to 0
-        let safeIndex = (selectedCategoryIndex >= 0 && selectedCategoryIndex < activeCategories.count) ? selectedCategoryIndex : 0
-        let selectedCategory = activeCategories[safeIndex]
-
-        let result: [String: [StoreOption]]
-        if selectedCategory == Constants.allStores {
-            // For "All Stores", return the complete groupedStores dictionary
-            result = sortedGroupedStores
-        } else {
-            // For specific categories, return only that category's stores
-            if let stores = sortedGroupedStores[selectedCategory] {
-                result = [selectedCategory: stores]
-            } else {
-                result = [:]
-            }
-        }
-        
-        // Only cache if we have results
-        if !result.isEmpty {
-            Self.updateCache(key: cacheKey, value: result)
-        }
-        
-        return result
-    }
-
-    // Add this static function to handle cache updates
-    private static func updateCache(key: String, value: [String: [StoreOption]]) {
-        processedStoresCache[key] = value
-    }
-
     // Add a method to clear the cache when needed
     private static func clearProcessedStoresCache() {
         processedStoresCache.removeAll()
@@ -662,6 +667,24 @@ struct UnifiedStoreSelectionView: View {
         let foundCategories = categories.dropFirst().filter { groupedStores[$0]?.isEmpty == false }
 
         var newActiveCategories: [String] = []
+        
+        let hasPreferredStores = locationManager.stores.compactMap { store in
+            let context = PersistenceController.shared.container.viewContext
+            let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
+                                                 store.name ?? "",
+                                                 locationManager.getAddress(store))
+            if let items = try? context.fetch(fetchRequest),
+               let firstItem = items.first {
+                return firstItem.isPreferred
+            }
+            return false
+        }.contains(true)
+        
+        if hasPreferredStores {
+            newActiveCategories.append("Preferred Stores")
+        }
+        
         if foundCategories.count == 1 {
             // Only one category found, show just that
             newActiveCategories = [foundCategories.first!]
@@ -676,6 +699,7 @@ struct UnifiedStoreSelectionView: View {
         if newActiveCategories != activeCategories {
             DispatchQueue.main.async {
                 self.activeCategories = newActiveCategories
+                viewModel.categoryOrder = newActiveCategories
                 if self.selectedCategoryIndex >= self.activeCategories.count {
                     self.selectedCategoryIndex = 0
                 }
@@ -699,38 +723,12 @@ struct UnifiedStoreSelectionView: View {
         
         return true
     }
-    
-    // Helper to sort store options
-    private func sortStoreOptions(_ options: [StoreOption]) -> [StoreOption] {
-        return options.sorted { a, b in
-            // Get user location
-//            guard let userLocation = locationManager.userLocationManager?.location else {
-            guard let userLocation = locationManager.userLocation else {
-                return a.name < b.name // Fallback to alphabetical if no location
-            }
-            
-            // Calculate distances
-            let distanceA = userLocation.distance(from: CLLocation(
-                latitude: a.mapItem.placemark.coordinate.latitude,
-                longitude: a.mapItem.placemark.coordinate.longitude
-            ))
-            
-            let distanceB = userLocation.distance(from: CLLocation(
-                latitude: b.mapItem.placemark.coordinate.latitude,
-                longitude: b.mapItem.placemark.coordinate.longitude
-            ))
-            
-            // Sort by distance
-            return distanceA < distanceB
-        }
-    }
-    
+        
     // Filter stores based on search query and selected category
     private func performSearchWithQuery(_ query: String) async {
         print("in performSearchWithQuery query ::: \(query)")
         print("Task isCancelled: \(Task.isCancelled)")
         
-//        guard let userLocation = locationManager.userLocationManager?.location else {
         guard let userLocation = locationManager.userLocation else {
             print("userLocation is nil, returning")
             return
@@ -794,7 +792,12 @@ struct UnifiedStoreSelectionView: View {
         
         await MainActor.run {
             locationManager.stores = sortedStores
-            locationManager.isFetching = false
+            
+            Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 second delay
+                locationManager.isFetching = false
+            }
+
             updateActiveCategories() // Update categories after new search
         }
     }
@@ -810,5 +813,19 @@ struct UnifiedStoreSelectionView: View {
             locationManager.filterStores(searchQuery: "", category: selectedCategory)
             filteredStores = locationManager.filteredStoreOptions
         }
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = 12.0
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }

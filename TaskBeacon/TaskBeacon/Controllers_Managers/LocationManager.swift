@@ -608,6 +608,17 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         // Calculate distance
         let distance = calculateDistance(to: store)
         
+        // Determine if this store is preferred
+        let context = PersistenceController.shared.container.viewContext
+        let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
+                                             name, address)
+        var isPreferred = false
+        if let items = try? context.fetch(fetchRequest),
+           let firstItem = items.first {
+            isPreferred = firstItem.isPreferred
+        }
+        
         // Create UUID
         let uuid = UUID().uuidString
         
@@ -620,6 +631,7 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             drivingTime: 0,
             address: address,
             category: category,
+            isPreferred: isPreferred,
             mapItem: store
         )
         
@@ -748,11 +760,13 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     
     func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String) {
         print("in monitorRegionAtLocation ::: center ::: \(center) ::: identifer ::: \(identifier)")
+        print("Currently monitored regions: \(locationManager.monitoredRegions.map { $0.identifier })")
 
         // Check if region is already being monitored
         let recentlyPresentedNotifications = NotificationDelegate.shared.recentlyPresentedNotifications
         
         print("bef isRegionMonitored recentlyPresentedNotifications ::: \(recentlyPresentedNotifications)")
+        print("Is region monitored: \(locationManager.monitoredRegions.contains { $0.identifier == identifier })")
         
         if isRegionMonitored(identifier) && !recentlyPresentedNotifications.isEmpty {
             print("⚠️ Region \(identifier) is already being monitored, skipping")
@@ -763,17 +777,17 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             let maxDistance = locationManager.maximumRegionMonitoringDistance
             
             let region = CLCircularRegion(center: center,
-                                          radius: 100.0/*maxDistance*/, identifier: identifier)
+                                          radius: 300.0/*maxDistance*/, identifier: identifier)
             region.notifyOnEntry = true
             region.notifyOnExit = true
        
             locationManager.startMonitoring(for: region)
             print("✅ Started monitoring region: \(identifier)")
+            print("Region details - Center: \(region.center), Radius: \(region.radius)")
             
             self.notifiedRegionIDs.insert(region.identifier)
             
             print("notifiedRegionIDs ::: \(self.notifiedRegionIDs)")
-
         }
     }
 
@@ -997,6 +1011,13 @@ extension LocationManager: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        print("DID ENTER REGION ::: \(region.identifier)")
+        print("Region state in didEnterRegion: \(region.identifier)")
+        if let circularRegion = region as? CLCircularRegion {
+            print("Region center: \(circularRegion.center)")
+            print("Region radius: \(circularRegion.radius)")
+        }
+        
         guard let region = region as? CLCircularRegion else { return }
         
         // Check if this is the first entry and should be ignored
@@ -1011,6 +1032,8 @@ extension LocationManager: CLLocationManagerDelegate {
             print("❌ No item found for region: \(region.identifier)")
             return
         }
+        
+        print("Found item in regionIDToItemMap: \(item.entity.name)")
         
         // Create notification content
         let content = UNMutableNotificationContent()

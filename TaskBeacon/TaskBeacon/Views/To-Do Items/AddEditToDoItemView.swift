@@ -257,20 +257,40 @@ struct AddEditToDoItemView: View {
         presentationMode.wrappedValue.dismiss()
     }
     
+    func createDefaultToDoItem() -> ToDoItemEntity {
+        let item = ToDoItemEntity(context: viewContext)
+        item.uid = UUID().uuidString
+        item.task = Constants.emptyString
+        item.category = "Uncategorized"
+        item.addressOrLocationName = Constants.emptyString
+        item.lastUpdated = Date()
+        item.lastEditor = "User"
+        item.latitude = 0.0
+        item.longitude = 0.0
+        item.isCompleted = false
+        item.dueDate = Date()
+        item.priority = 2 // Medium priority by default
+        
+        return item
+    }
+    
     private func saveToDoItem() {
+        var newOrUpdatedToDoItem: ToDoItemEntity?
+        
         Task {
             // 1. Save or update the item in Core Data via the view model
             if toDoItem == nil {
-                await viewModel.saveToDoItem(item: toToDoItem(task: taskName,
-                                                              category: selectedCategory,
-                                                              addressOrLocationName: needsLocation ? addressOrLocationName : Constants.emptyString,
-                                                              lastUpdate: Date(),
-                                                              lastEditor: Constants.emptyString,
-                                                              latitude: needsLocation ? viewModel.latitude : latitude ?? 0,
-                                                              longitude: needsLocation ? viewModel.longitude : longitude ?? 0,
-                                                              isCompleted: false,
-                                                              dueDate: dueDate,
-                                                              priority: priority))
+                newOrUpdatedToDoItem = toToDoItem(task: taskName,
+                                                  category: selectedCategory,
+                                                  addressOrLocationName: needsLocation ? addressOrLocationName : Constants.emptyString,
+                                                  lastUpdate: Date(),
+                                                  lastEditor: Constants.emptyString,
+                                                  latitude: viewModel.latitude > 0 ? viewModel.latitude : latitude ?? 0,
+                                                  longitude: viewModel.longitude > 0 ? viewModel.longitude : longitude ?? 0,
+                                                  isCompleted: false,
+                                                  dueDate: dueDate,
+                                                  priority: priority)
+                await viewModel.saveToDoItem(item: newOrUpdatedToDoItem ?? createDefaultToDoItem())
             } else if let item = toDoItem {
                 // Update item properties...
                 if let item = toDoItem {
@@ -279,13 +299,21 @@ struct AddEditToDoItemView: View {
                     item.addressOrLocationName = needsLocation ? addressOrLocationName : Constants.emptyString
                     item.lastUpdated = Date()
                     item.lastEditor = Constants.emptyString
-                    item.latitude = needsLocation ? viewModel.latitude : latitude ?? 0
-                    item.longitude = needsLocation ? viewModel.longitude : longitude ?? 0
+                    item.latitude = viewModel.latitude > 0 ? viewModel.latitude : latitude ?? 0
+                    item.longitude = viewModel.longitude > 0 ? viewModel.longitude : longitude ?? 0
                     item.dueDate = dueDate
                     item.priority = priority
                     
+                    newOrUpdatedToDoItem = item
+                    
                     await viewModel.saveToDoItem(item: item)
                 }
+            }
+            
+            if let uid = newOrUpdatedToDoItem?.uid {
+                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: newOrUpdatedToDoItem?.latitude ?? 0, longitude: newOrUpdatedToDoItem?.longitude ?? 0), identifier: uid)
+                
+                locationManager.regionIDToItemMap[uid] = newOrUpdatedToDoItem
             }
 
             // 2. Fetch latest data and update view model arrays
@@ -300,10 +328,10 @@ struct AddEditToDoItemView: View {
                 }
 
                 // Update LocationManager
-                LocationManager.shared.initializeWithItems(items)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    self.locationManager.loadAndMonitorAllGeofences(from: viewContext)
-                }
+//                LocationManager.shared.initializeWithItems(items)
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+//                    self.locationManager.loadAndMonitorAllGeofences(from: viewContext)
+//                }
             } catch {
                 print("❌ Error saving To-Do item: \(error.localizedDescription)")
             }
@@ -328,6 +356,7 @@ struct AddEditToDoItemView: View {
                             dueDate: Date?,
                             priority: Int16) -> ToDoItemEntity {
         let item = ToDoItemEntity(context: viewContext)
+        item.uid = UUID().uuidString
         item.task = task
         item.category = category
         item.addressOrLocationName = addressOrLocationName

@@ -41,6 +41,7 @@ struct AddEditShoppingItemView: View {
     @State private var showSubscriptionSheet = false
     @State private var searchText = ""  // Add search field state
     @State private var isEditingText = false
+    @State private var isPreferred = false
     @State private var selectedStoreFilter: String = Constants.allStores
     @State private var hasLoadedProducts = false
     @State private var mapRegion: MKCoordinateRegion = MKCoordinateRegion(
@@ -164,7 +165,22 @@ struct AddEditShoppingItemView: View {
                 },
                 trailing: Button(Constants.save) {
                     Task {
-                        await saveShoppingItem()
+//                        await viewModel.saveShoppingItem(storeName: storeName,
+//                                                         shoppingItem: shoppingItem,
+//                                                         name: name,
+//                                                         selectedCategory: selectedCategory,
+//                                                         storeAddress: storeAddress,
+//                                                         latitude: latitude,
+//                                                         longitude: longitude,
+//                                                         expirationDate: expirationDate,
+//                                                         selectedCategoryEmoji: selectedCategoryEmoji,
+//                                                         isPreferred: isPreferred)
+                        storeName = Constants.emptyString
+                        storeAddress = Constants.emptyString
+                        selectedStore = nil
+                        latitude = nil
+                        longitude = nil
+                    
                         dismissSheet()
                     }
                 }
@@ -202,7 +218,8 @@ struct AddEditShoppingItemView: View {
                                              storeAddress: $storeAddress,
                                              selectedStore: $selectedStore,
                                              latitude: $latitude,
-                                             longitude: $longitude)
+                                             longitude: $longitude,
+                                              isPreferred: $isPreferred)
                 }
             }
             .sheet(isPresented: $showSubscriptionSheet) {
@@ -312,90 +329,90 @@ struct AddEditShoppingItemView: View {
         presentationMode.wrappedValue.dismiss()
     }
     
-    private func saveShoppingItem() async {
-        do {
-            // Check if this is a store assignment
-            let isStoreAssignment = !storeName.isEmpty
-
-            // CRITICAL: All Core Data operations need to happen on the main thread
-            await MainActor.run {
-                do {
-                    let itemToSave: ShoppingItemEntity
-                    
-                    if let existingItem = shoppingItem {
-                        // Editing existing item
-                        itemToSave = existingItem
-                    } else {
-                        // Creating a new item
-                        itemToSave = ShoppingItemEntity(context: viewContext)
-                        itemToSave.id = UUID()
-                        itemToSave.uid = itemToSave.id?.uuidString
-                    }
-                    
-                    // Update item properties
-                    itemToSave.name = name
-                    itemToSave.category = selectedCategory
-                    itemToSave.storeName = storeName.isEmpty ? nil : storeName
-                    itemToSave.storeAddress = storeAddress.isEmpty ? nil : storeAddress
-                    
-                    if let lat = latitude, let long = longitude {
-                        itemToSave.latitude = lat
-                        itemToSave.longitude = long
-                    }
-                    
-                    if Constants.perishableCategories.contains(selectedCategory) {
-                        itemToSave.expirationDate = expirationDate
-                    } else {
-                        itemToSave.expirationDate = nil
-                    }
-                    
-                    itemToSave.lastUpdated = Date()
-                    
-                    // Set emoji if not already set
-                    if itemToSave.emoji == nil || itemToSave.emoji?.isEmpty == true {
-                        // Make sure emoji map is loaded
-                        if viewModel.emojiMap.isEmpty {
-                            viewModel.emojiMap = viewModel.loadEmojiMap()
-                        }
-                        
-                        // Get emoji from name or category
-                        let emojiFromName = viewModel.emojiForItemName(itemToSave.name ?? "")
-                        itemToSave.emoji = emojiFromName
-                        itemToSave.categoryEmoji = selectedCategoryEmoji
-                    }
-                    
-                    // Now save the context
-                    try viewContext.save()
-                    
-                    // If this was a store assignment, clear the grouping dictionary to force rebuild
-                    if isStoreAssignment {
-                        self.storeName = ""
-                        self.storeAddress = ""
-                        self.selectedStore = nil
-                        self.latitude = nil
-                        self.longitude = nil
-                    }
-                    
-                    // Update grouping without triggering more fetches
-                    viewModel.updateGroupedItemsInternal()
-                    
-                    if let uid = itemToSave.uid {
-                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid)
-                        
-                        locationManager.regionIDToItemMap[uid] = itemToSave
-                    }
-                    
-                    // Update view model state directly
-                    viewModel.objectWillChange.send()
-                    
-                    // Dismiss the sheet after saving is complete
-                    dismissSheet()
-                } catch {
-                    print("❌ Error saving to Core Data on main thread: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
+//    private func saveShoppingItem() async {
+//        do {
+//            // Check if this is a store assignment
+//            let isStoreAssignment = !storeName.isEmpty
+//
+//            // CRITICAL: All Core Data operations need to happen on the main thread
+//            await MainActor.run {
+//                do {
+//                    let itemToSave: ShoppingItemEntity
+//                    
+//                    if let existingItem = shoppingItem {
+//                        // Editing existing item
+//                        itemToSave = existingItem
+//                    } else {
+//                        // Creating a new item
+//                        itemToSave = ShoppingItemEntity(context: viewContext)
+//                        itemToSave.id = UUID()
+//                        itemToSave.uid = itemToSave.id?.uuidString
+//                    }
+//                    
+//                    // Update item properties
+//                    itemToSave.name = name
+//                    itemToSave.category = selectedCategory
+//                    itemToSave.storeName = storeName.isEmpty ? nil : storeName
+//                    itemToSave.storeAddress = storeAddress.isEmpty ? nil : storeAddress
+//                    
+//                    if let lat = latitude, let long = longitude {
+//                        itemToSave.latitude = lat
+//                        itemToSave.longitude = long
+//                    }
+//                    
+//                    if Constants.perishableCategories.contains(selectedCategory) {
+//                        itemToSave.expirationDate = expirationDate
+//                    } else {
+//                        itemToSave.expirationDate = nil
+//                    }
+//                    
+//                    itemToSave.lastUpdated = Date()
+//                    
+//                    // Set emoji if not already set
+//                    if itemToSave.emoji == nil || itemToSave.emoji?.isEmpty == true {
+//                        // Make sure emoji map is loaded
+//                        if viewModel.emojiMap.isEmpty {
+//                            viewModel.emojiMap = viewModel.loadEmojiMap()
+//                        }
+//                        
+//                        // Get emoji from name or category
+//                        let emojiFromName = viewModel.emojiForItemName(itemToSave.name ?? "")
+//                        itemToSave.emoji = emojiFromName
+//                        itemToSave.categoryEmoji = selectedCategoryEmoji
+//                    }
+//                    
+//                    // Now save the context
+//                    try viewContext.save()
+//                    
+//                    // If this was a store assignment, clear the grouping dictionary to force rebuild
+//                    if isStoreAssignment {
+//                        self.storeName = ""
+//                        self.storeAddress = ""
+//                        self.selectedStore = nil
+//                        self.latitude = nil
+//                        self.longitude = nil
+//                    }
+//                    
+//                    // Update grouping without triggering more fetches
+//                    viewModel.updateGroupedItemsInternal()
+//                    
+//                    if let uid = itemToSave.uid {
+//                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid)
+//                        
+//                        locationManager.regionIDToItemMap[uid] = itemToSave
+//                    }
+//                    
+//                    // Update view model state directly
+//                    viewModel.objectWillChange.send()
+//                    
+//                    // Dismiss the sheet after saving is complete
+//                    dismissSheet()
+//                } catch {
+//                    print("❌ Error saving to Core Data on main thread: \(error.localizedDescription)")
+//                }
+//            }
+//        }
+//    }
 
     // Setup location manager with proper delegate pattern
     private func setupUserLocationManager() {

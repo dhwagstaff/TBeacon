@@ -118,7 +118,6 @@ struct ContentView: View {
                                     isShowingAnySheet: .constant(false),
                                     shoppingItem: nil
                                 )
-                              //  .environmentObject(locationManager)
                             }
                             .sheet(isPresented: $isUpcomingToDoItems) {
                                 EditableListView()

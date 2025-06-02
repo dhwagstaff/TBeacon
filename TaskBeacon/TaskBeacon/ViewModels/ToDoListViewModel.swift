@@ -125,11 +125,13 @@ class ToDoListViewModel: ListsViewModel {
         }
         
         if !completed {
-            if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
+            if let locationIdentifier = item.value(forKey: "uid") as? String {
+//            if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
                 locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), identifier: locationIdentifier)
             }
         } else {
-            if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
+            if let locationIdentifier = item.value(forKey: "uid") as? String {
+//            if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
                 locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
             }
         }
@@ -232,5 +234,22 @@ class ToDoListViewModel: ListsViewModel {
     
     private func loadCustomCategories() {
         allCategories = getAllToDoCategories()
+    }
+
+    func createDefaultToDoItem() -> ToDoItemEntity {
+        let item = ToDoItemEntity(context: viewContext)
+        item.uid = UUID().uuidString
+        item.task = ""
+        item.category = "Uncategorized"
+        item.addressOrLocationName = ""
+        item.lastUpdated = Date()
+        item.lastEditor = "User"
+        item.latitude = 0.0
+        item.longitude = 0.0
+        item.isCompleted = false
+        item.dueDate = Date()
+        item.priority = 2 // Medium priority by default
+        
+        return item
     }
 }

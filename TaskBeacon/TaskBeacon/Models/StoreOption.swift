@@ -21,7 +21,8 @@ struct StoreOption: Identifiable, Codable, Hashable {
     let name: String
     var address: String
     var category: String
-    
+    var isPreferred: Bool
+
     // Properties from the master struct
     var price: Double = 0.0
     var distance: Double? // Distance in meters
@@ -82,12 +83,19 @@ struct StoreOption: Identifiable, Codable, Hashable {
     
     // Handle MKMapItem for Codable
     enum CodingKeys: String, CodingKey {
-        case storeID, name, price, distance, drivingDistance, drivingTime, address, category
+        case storeID, name, price, distance, drivingDistance, drivingTime, address, category, isPreferred
     }
     
-    init(storeID: String, name: String, price: Double = 0.0, distance: Double? = nil,
-         drivingDistance: Double? = nil, drivingTime: TimeInterval? = nil,
-         address: String, category: String, mapItem: MKMapItem) {
+    init(storeID: String,
+         name: String,
+         price: Double = 0.0,
+         distance: Double? = nil,
+         drivingDistance: Double? = nil,
+         drivingTime: TimeInterval? = nil,
+         address: String,
+         category: String,
+         isPreferred: Bool,
+         mapItem: MKMapItem) {
         self.storeID = storeID
         self.name = name
         self.price = price
@@ -96,6 +104,7 @@ struct StoreOption: Identifiable, Codable, Hashable {
         self.drivingTime = drivingTime
         self.address = address
         self.category = category
+        self.isPreferred = isPreferred
         self.mapItem = mapItem
     }
     
@@ -111,6 +120,7 @@ struct StoreOption: Identifiable, Codable, Hashable {
         drivingTime = try container.decodeIfPresent(TimeInterval.self, forKey: .drivingTime)
         address = try container.decode(String.self, forKey: .address)
         category = try container.decode(String.self, forKey: .category)
+        isPreferred = try container.decode(Bool.self, forKey: .isPreferred)
         
         // Create a placeholder mapItem since we can't decode it
         let coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
@@ -130,6 +140,7 @@ struct StoreOption: Identifiable, Codable, Hashable {
         try container.encodeIfPresent(drivingTime, forKey: .drivingTime)
         try container.encode(address, forKey: .address)
         try container.encode(category, forKey: .category)
+        try container.encode(isPreferred, forKey: .isPreferred)
         // mapItem is excluded from encoding
     }
 }

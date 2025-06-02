@@ -16,6 +16,7 @@ struct ImageSymbolNames {
 }
 
 enum StoreCategory: String, CaseIterable {
+    case preferred = "Preferred"
     case allStores = "All Stores"
     case generalMerchandise = "General Merchandise"
     case groceryAndFood = "Grocery & Food"

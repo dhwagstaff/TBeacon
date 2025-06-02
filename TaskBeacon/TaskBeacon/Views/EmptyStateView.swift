@@ -179,7 +179,6 @@ struct EmptyStateView: View {
                         isShowingAnySheet: $isShowingAnySheet,
                         shoppingItem: scannedItem
                     )
-                  //  .environmentObject(locationManager)
                 }
                 .fullScreenCover(isPresented: $showAddTodoItem, onDismiss: {
                     navigateToEditableList = true

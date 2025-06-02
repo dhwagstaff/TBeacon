@@ -116,43 +116,15 @@ struct EditableListView: View {
     @State private var selectedPriority: Priority = .high
     @State private var isShowingLoadingOverlay = false
     @State private var expandedPriorities: Set<Priority> = Set(Priority.allCases)
+    @State private var isPreferred: Bool = false
     
     private static var isRefreshing = false
     private var userLocationManager: CLLocationManager?
     
-    let todoRowHeight = 80.0
+    let todoRowHeight = 100.0
     
     private var filteredByPriorityItems: [ToDoItemEntity] {
         todoListViewModel.toDoItems.filter { $0.priority == selectedPriority.int16Value }
-    }
-    
-    init() {
-        let context = PersistenceController.shared.container.viewContext
-        var items: [NSManagedObject] = []
-        
-        let todoRequest = NSFetchRequest<ToDoItemEntity>(entityName: CoreDataEntities.toDoItem.stringValue)
-        let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-        
-        do {
-            let todos = try context.fetch(todoRequest)
-            let shoppingItems = try context.fetch(shoppingRequest)
-            
-            items.append(contentsOf: todos)
-            items.append(contentsOf: shoppingItems)
-            
-            print("✅ Fetched \(items.count) items for geofencing.")
-        } catch {
-            print("❌ Error fetching items: \(error)")
-        }
-        
-        // Initialize the LocationManager singleton with fetched items
-        LocationManager.shared.initializeWithItems(items)
-        LocationManager.shared.viewContext = context
-        
-        // Set up dedicated user location manager
-        let manager = CLLocationManager()
-        // We'll set the delegate in onAppear to avoid memory leaks
-        self.userLocationManager = manager
     }
     
     // MARK: - Computed Properties
@@ -186,9 +158,12 @@ struct EditableListView: View {
                             shoppingListContent
                         } else { // TO DO'S
                             todoListContent
-                                .frame(height: 44)
+                                .frame(height: geometry.size.height * 0.6)
                         }
                     }
+                    .listStyle(.plain)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                     .onChange(of: shoppingListViewModel.shoppingItems) {
                         refreshTrigger = UUID()
                         shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
@@ -277,47 +252,6 @@ struct EditableListView: View {
             }
         }
     }
-
-    // Add this modifier to keep the animation code separate and reusable
-    struct PulseAnimation: ViewModifier {
-        var isPulsing: Bool
-        
-        func body(content: Content) -> some View {
-            content
-                .padding(8)
-                .background(
-                    Circle()
-                        .fill(Color.blue.opacity(0.1))
-                        .scaleEffect(isPulsing ? 1.1 : 0.95)
-                )
-        }
-    }
-    
-    // Content for unassigned items categories
-    @ViewBuilder
-    private func unassignedItemsCategoriesContent(otherStore: String) -> some View {
-        if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[otherStore] {
-            ForEach(Array(categories.keys.sorted()), id: \.self) { category in
-                if let items = categories[category], !items.isEmpty {
-                    // Reuse the same category disclosure pattern
-                    DisclosureGroup(
-                        isExpanded: Binding(
-                            get: { expandedCategoryMap["\(otherStore)_\(category)"] ?? false },
-                            set: { expandedCategoryMap["\(otherStore)_\(category)"] = $0 }
-                        ),
-                        content: {
-                            shoppingItemsList(items: items)
-                        },
-                        label: {
-                            categoryLabel(category: category, items: items)
-                        }
-                    )
-                    .background(Color(.systemBackground))
-                    .listRowBackground(Color(.systemBackground))
-                }
-            }
-        }
-    }
     
     // Section for items with assigned stores
     @ViewBuilder
@@ -374,291 +308,6 @@ struct EditableListView: View {
                     .listRowBackground(Color(.systemBackground))
                 }
                 .id("store-section-\(store)-\(refreshTrigger)")
-            }
-        }
-    }
-    
-    // Reusable view for shopping items list
-    @ViewBuilder
-    private func shoppingItemsList(items: [ShoppingItemEntity]) -> some View {
-        ForEach(items, id: \.objectID) { item in
-            ZStack {
-                Button(action: {
-                    // Edit the item when tapped
-                    selectedShoppingItem = item
-                    
-                    if ((item.storeName?.isEmpty) == nil) {
-                        showStoreSelectionSheet = true
-                    } else {
-                        showAddShoppingItem = true
-                        isShowingAnySheet = true
-                    }
-                }) {
-                    ShoppingItemRow(item: item)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .listRowInsets(EdgeInsets())
-            .padding(.vertical, 2)
-            .background(Color(.systemBackground))
-            .swipeActions(edge: .trailing) {
-                Button(role: .destructive) {
-                    withAnimation {
-                        deleteShoppingItem(item)
-                    }
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-                .tint(.red)
-            }
-        }
-    }
-    
-    // Add this method to EditableListView
-    private func deleteToDoItem(_ item: ToDoItemEntity) {
-        if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
-            // Use the existing view model function
-            todoListViewModel.deleteToDoItem(item: item)
-            
-            // Set up undo functionality
-            recentlyDeletedItem = (item, {
-                // Restore the item if the user taps Undo
-                let context = PersistenceController.shared.container.viewContext
-                let newItem = ToDoItemEntity(context: context)
-                newItem.uid = item.uid
-                newItem.task = item.task
-                newItem.category = item.category
-                newItem.priority = item.priority
-                newItem.dueDate = item.dueDate
-                newItem.isCompleted = false
-                newItem.lastEditor = Constants.emptyString
-                newItem.lastUpdated = Date()
-                newItem.latitude = 0.0
-                newItem.longitude = 0.0
-                
-                // Save the restored item
-                try? context.save()
-                
-                // Refresh the UI
-                DispatchQueue.main.async {
-                    self.todoListViewModel.updateGroupedToDoItems(updateExists: true)
-                    self.refreshTrigger = UUID()
-                }
-            })
-            
-            // Automatically dismiss the undo button after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                if self.recentlyDeletedItem?.0 === item {
-                    self.recentlyDeletedItem = nil
-                }
-            }
-            
-            locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
-        }
-    }
-    
-    // Reusable view for category labels
-    @ViewBuilder
-    private func categoryLabel(category: String, items: [ShoppingItemEntity]) -> some View {
-        HStack {
-            let emoji = item(for: category)
-            Text(items.first?.categoryEmoji ?? "✳️")
-            Text(category)
-                .foregroundColor(.primary)
-            Spacer()
-            Text("\(items.count)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(.systemGray5))
-                .cornerRadius(12)
-        }
-    }
-    
-    // To-do list content extracted to a separate builder
-    // Example refactor of todoListContent
-    @ViewBuilder
-    private var todoListContent: some View {
-        switch filterType {
-        case .none:
-            NoFilterView(
-                todoListViewModel: todoListViewModel,
-                expandedPriorities: expandedPriorities,
-                refreshTrigger: refreshTrigger,
-                todoRowHeight: todoRowHeight,
-                filterType: filterType,
-                onPriorityToggle: { priority, isExpanded in
-                    if isExpanded {
-                        expandedPriorities.insert(priority)
-                    } else {
-                        expandedPriorities.remove(priority)
-                    }
-                },
-                onDelete: deleteToDoItem
-            )
-            
-        case .priority:
-            PriorityFilterView(
-                todoListViewModel: todoListViewModel,
-                selectedPriority: selectedPriority,
-                expandedPriorities: expandedPriorities,
-                refreshTrigger: refreshTrigger,
-                todoRowHeight: todoRowHeight,
-                filterType: filterType,
-                onPriorityToggle: { priority, isExpanded in
-                    if isExpanded {
-                        expandedPriorities.insert(priority)
-                    } else {
-                        expandedPriorities.remove(priority)
-                    }
-                },
-                onDelete: deleteToDoItem
-            )
-            
-        case .category:
-            CategoryFilterView(todoListViewModel: todoListViewModel,
-                expandedCategories: expandedCategories,
-                refreshTrigger: refreshTrigger,
-                todoRowHeight: todoRowHeight,
-                filterType: filterType,
-                onCategoryToggle: { category, isExpanded in
-                    if isExpanded {
-                        if expandedCategories[category] == nil {
-                            expandedCategories[category] = ["main"]
-                        } else {
-                            expandedCategories[category]?.insert("main")
-                        }
-                    } else {
-                        expandedCategories[category]?.remove("main")
-                    }
-                },
-                onDelete: deleteToDoItem
-            )
-        }
-    }
-
-    // Helper function for accessibility hint
-    private func accessibilityHint(for item: ToDoItemEntity) -> String {
-        var hints: [String] = []
-        
-        if let category = item.category, !category.isEmpty {
-            hints.append("Category: \(category)")
-        }
-        
-        if let dueDate = item.dueDate {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .medium
-            hints.append("Due: \(dateFormatter.string(from: dueDate))")
-        }
-        
-        if let location = item.addressOrLocationName, !location.isEmpty {
-            hints.append("Location: \(location)")
-        }
-        
-        return hints.joined(separator: ", ")
-    }
-    
-    private func handleFlatMove(
-        from source: IndexSet,
-        to destination: Int,
-        flatItems: [ToDoItemEntity],
-        flatRows: [ToDoRow]
-    ) {
-        // Create a mutable copy of the items
-        var items = flatItems
-        
-        // Get the source items and their indices in the flatItems array
-        let sourceItems = source.map { index in
-            if case .item(let item) = flatRows[index] {
-                return item
-            }
-            return nil
-        }.compactMap { $0 }
-        
-        // Find the actual indices in the flatItems array
-        let sourceIndices = sourceItems.compactMap { item in
-            items.firstIndex(where: { $0.objectID == item.objectID })
-        }
-        
-        // Calculate the actual destination index in the flatItems array
-        var actualDestination = destination
-        var itemCount = 0
-        for i in 0..<destination {
-            if case .item = flatRows[i] {
-                itemCount += 1
-            }
-        }
-        actualDestination = itemCount
-        
-        // Move the items using the actual indices
-        items.move(fromOffsets: IndexSet(sourceIndices), toOffset: actualDestination)
-        
-        // Find the new priority for each moved item
-        for item in sourceItems {
-            // Find the destination section by looking at the headers around the destination index
-            var newPriority: Int16 = item.priority // Default to current priority
-            
-            // First, find the header that comes before the destination
-            for i in (0..<destination).reversed() {
-                if case .header(let priority) = flatRows[i] {
-                    newPriority = priority.int16Value
-                    break
-                }
-            }
-            
-            // Update the priority
-            item.priority = newPriority
-        }
-        
-        // Save all changes at once
-        do {
-            try viewContext.save()
-            
-            // Update the view model and force a refresh
-            DispatchQueue.main.async {
-                self.todoListViewModel.updateGroupedToDoItems(updateExists: true)
-                self.refreshTrigger = UUID() // Force view refresh
-            }
-        } catch {
-            print("Error saving context: \(error)")
-        }
-    }
-        
-    // Add this function to EditableListView:
-    private func requestLocationIfNeeded() {
-        print("🔍 Checking location permissions")
-        let locationManager = CLLocationManager()
-        let status = locationManager.authorizationStatus
-        
-        if status == .notDetermined {
-            print("📍 Requesting location permission")
-            locationManager.requestAlwaysAuthorization()
-        } else if status == .denied || status == .restricted {
-            print("⚠️ Location permission denied or restricted")
-        } else {
-            print("✅ Location permission already granted")
-        }
-    }
-    
-    // Call this function when preparing to show the store selection:
-    func showStoreSelection() {
-        Task {
-            if await permissionManager.checkAndRequestPermission(for: .location) {
-                // Initialize store list before showing sheet
-                if mkMapItems.isEmpty {
-                    // Try to get location-based stores with a slight delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        Task { await self.locationManager.performDirectMapKitSearch() }
-                        
-                        self.showStoreSelectionSheet = true
-                    }
-                } else {
-                    // We already have stores, just show the sheet
-                    showStoreSelectionSheet = true
-                }
             }
         }
     }
@@ -727,7 +376,141 @@ struct EditableListView: View {
         .background(Color(.systemBackground))
         .cornerRadius(8)
     }
+        
+    // To-do list content extracted to a separate builder
+    @ViewBuilder
+    private var todoListContent: some View {
+        switch filterType {
+        case .none:
+            List {
+                ForEach(Priority.allCases) { priority in
+                    Section(header: PrioritySectionHeader(priority: priority, itemCount: todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }.count)) {
+                        let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
+                        if items.isEmpty {
+                            EmptyItemsView()
+                        } else {
+                            ForEach(items, id: \.objectID) { item in
+                                ToDoItemRow(item: item, showCategory: filterType == .category)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: todoRowHeight)
+                                    .onTapGesture {
+                                        selectedToDoItem = item
+                                        showAddTodoItem = true
+                                        isShowingAnySheet = true
+                                    }
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            withAnimation {
+                                                deleteToDoItem(item)
+                                            }
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .tint(.red)
+                                    }
+                            }
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            
+        case .priority:
+            List {
+                Section(header: PrioritySectionHeader(priority: selectedPriority, itemCount: filteredByPriorityItems.count)) {
+                    if filteredByPriorityItems.isEmpty {
+                        EmptyItemsView()
+                    } else {
+                        ForEach(filteredByPriorityItems, id: \.objectID) { item in
+                            ToDoItemRow(item: item, showCategory: filterType == .category)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: todoRowHeight)
+                                .onTapGesture {
+                                    selectedToDoItem = item
+                                    showAddTodoItem = true
+                                    isShowingAnySheet = true
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        withAnimation {
+                                            deleteToDoItem(item)
+                                        }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    .tint(.red)
+                                }
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            
+        case .category:
+            let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
+            List {
+                ForEach(grouped.keys.sorted(), id: \.self) { category in
+                    Section(header: CategorySectionHeader(category: category, itemCount: grouped[category]?.count ?? 0)) {
+                        if let items = grouped[category], !items.isEmpty {
+                            ForEach(items, id: \.objectID) { item in
+                                ToDoItemRow(item: item, showCategory: true)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: todoRowHeight)
+                                    .onTapGesture {
+                                        selectedToDoItem = item
+                                        showAddTodoItem = true
+                                        isShowingAnySheet = true
+                                    }
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            withAnimation {
+                                                deleteToDoItem(item)
+                                            }
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .tint(.red)
+                                    }
+                            }
+                        } else {
+                            EmptyItemsView()
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+        }
+    }
     
+    init() {
+        let context = PersistenceController.shared.container.viewContext
+        var items: [NSManagedObject] = []
+        
+        let todoRequest = NSFetchRequest<ToDoItemEntity>(entityName: CoreDataEntities.toDoItem.stringValue)
+        let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
+        
+        do {
+            let todos = try context.fetch(todoRequest)
+            let shoppingItems = try context.fetch(shoppingRequest)
+            
+            items.append(contentsOf: todos)
+            items.append(contentsOf: shoppingItems)
+            
+            print("✅ Fetched \(items.count) items for geofencing.")
+        } catch {
+            print("❌ Error fetching items: \(error)")
+        }
+        
+        // Initialize the LocationManager singleton with fetched items
+        LocationManager.shared.initializeWithItems(items)
+        LocationManager.shared.viewContext = context
+        
+        // Set up dedicated user location manager
+        let manager = CLLocationManager()
+        // We'll set the delegate in onAppear to avoid memory leaks
+        self.userLocationManager = manager
+    }
+        
     var body: some View {
         ZStack(alignment: .bottom) {
             NavigationView {
@@ -878,11 +661,13 @@ struct EditableListView: View {
                                     
                                     // Show loading overlay
                                     withAnimation(.easeIn(duration: 0.3)) {
-                                        isShowingLoadingOverlay = true
+                                        if locationManager.stores.isEmpty {
+                                            isShowingLoadingOverlay = true
+                                        }
                                     }
                                     
                                     // Hide loading overlay after 3 seconds
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
                                         withAnimation(.easeOut(duration: 0.3)) {
                                             isShowingLoadingOverlay = false
                                         }
@@ -974,28 +759,28 @@ struct EditableListView: View {
                         }
                         
                         // Save to Core Data
-                        do {
-                            try viewContext.save()
-                            print("💾 Successfully saved to Core Data")
-                            
-                            DispatchQueue.main.async {
-                                // First, fetch fresh data from Core Data
-                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-                                if let items = try? viewContext.fetch(request) {
-                                    // Update the view model's data
-                                    shoppingListViewModel.shoppingItems = items
-                                    
-                                    // Clear and rebuild the groupings
-                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
-                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
-                                    
-                                    // Force view refresh
-                                    refreshTrigger = UUID()
-                                }
-                            }
-                        } catch {
-                            print("❌ Error saving to Core Data: \(error)")
-                        }
+//                        do {
+//                            try viewContext.save()
+//                            print("💾 Successfully saved to Core Data")
+//                            
+//                            DispatchQueue.main.async {
+//                                // First, fetch fresh data from Core Data
+//                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
+//                                if let items = try? viewContext.fetch(request) {
+//                                    // Update the view model's data
+//                                    shoppingListViewModel.shoppingItems = items
+//                                    
+//                                    // Clear and rebuild the groupings
+//                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
+//                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
+//                                    
+//                                    // Force view refresh
+//                                    refreshTrigger = UUID()
+//                                }
+//                            }
+//                        } catch {
+//                            print("❌ Error saving to Core Data: \(error)")
+//                        }
                         
                         // Reset states
                         selectedShoppingItem = nil
@@ -1008,7 +793,8 @@ struct EditableListView: View {
                                               storeAddress: $storeAddress,
                                               selectedStore: $selectedStore,
                                               latitude: $latitude,
-                                              longitude: $longitude
+                                              longitude: $longitude,
+                                              isPreferred: $isPreferred
                     )
                 }
                 .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
@@ -1094,6 +880,253 @@ struct EditableListView: View {
         }
     }
     
+    // Helper function for accessibility hint
+    private func accessibilityHint(for item: ToDoItemEntity) -> String {
+        var hints: [String] = []
+        
+        if let category = item.category, !category.isEmpty {
+            hints.append("Category: \(category)")
+        }
+        
+        if let dueDate = item.dueDate {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            hints.append("Due: \(dateFormatter.string(from: dueDate))")
+        }
+        
+        if let location = item.addressOrLocationName, !location.isEmpty {
+            hints.append("Location: \(location)")
+        }
+        
+        return hints.joined(separator: ", ")
+    }
+    
+    private func handleFlatMove(from source: IndexSet,
+                                to destination: Int,
+                                flatItems: [ToDoItemEntity],
+                                flatRows: [ToDoRow]) {
+        // Create a mutable copy of the items
+        var items = flatItems
+        
+        // Get the source items and their indices in the flatItems array
+        let sourceItems = source.map { index in
+            if case .item(let item) = flatRows[index] {
+                return item
+            }
+            return nil
+        }.compactMap { $0 }
+        
+        // Find the actual indices in the flatItems array
+        let sourceIndices = sourceItems.compactMap { item in
+            items.firstIndex(where: { $0.objectID == item.objectID })
+        }
+        
+        // Calculate the actual destination index in the flatItems array
+        var actualDestination = destination
+        var itemCount = 0
+        for i in 0..<destination {
+            if case .item = flatRows[i] {
+                itemCount += 1
+            }
+        }
+        actualDestination = itemCount
+        
+        // Move the items using the actual indices
+        items.move(fromOffsets: IndexSet(sourceIndices), toOffset: actualDestination)
+        
+        // Find the new priority for each moved item
+        for item in sourceItems {
+            // Find the destination section by looking at the headers around the destination index
+            var newPriority: Int16 = item.priority // Default to current priority
+            
+            // First, find the header that comes before the destination
+            for i in (0..<destination).reversed() {
+                if case .header(let priority) = flatRows[i] {
+                    newPriority = priority.int16Value
+                    break
+                }
+            }
+            
+            // Update the priority
+            item.priority = newPriority
+        }
+        
+        // Save all changes at once
+        do {
+            try viewContext.save()
+            
+            // Update the view model and force a refresh
+            DispatchQueue.main.async {
+                self.todoListViewModel.updateGroupedToDoItems(updateExists: true)
+                self.refreshTrigger = UUID() // Force view refresh
+            }
+        } catch {
+            print("Error saving context: \(error)")
+        }
+    }
+        
+    // Add this function to EditableListView:
+    private func requestLocationIfNeeded() {
+        print("🔍 Checking location permissions")
+        let locationManager = CLLocationManager()
+        let status = locationManager.authorizationStatus
+        
+        if status == .notDetermined {
+            print("📍 Requesting location permission")
+            locationManager.requestAlwaysAuthorization()
+        } else if status == .denied || status == .restricted {
+            print("⚠️ Location permission denied or restricted")
+        } else {
+            print("✅ Location permission already granted")
+        }
+    }
+    
+    // Call this function when preparing to show the store selection:
+    private func showStoreSelection() {
+        Task {
+            if await permissionManager.checkAndRequestPermission(for: .location) {
+                // Initialize store list before showing sheet
+                if mkMapItems.isEmpty {
+                    // Try to get location-based stores with a slight delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        Task { await self.locationManager.performDirectMapKitSearch() }
+                        
+                        self.showStoreSelectionSheet = true
+                    }
+                } else {
+                    // We already have stores, just show the sheet
+                    showStoreSelectionSheet = true
+                }
+            }
+        }
+    }
+    
+    // Reusable view for shopping items list
+    @ViewBuilder
+    private func shoppingItemsList(items: [ShoppingItemEntity]) -> some View {
+        ForEach(items, id: \.objectID) { item in
+            ZStack {
+                Button(action: {
+                    // Edit the item when tapped
+                    selectedShoppingItem = item
+                    
+                    if ((item.storeName?.isEmpty) == nil) {
+                        showStoreSelectionSheet = true
+                    } else {
+                        showAddShoppingItem = true
+                        isShowingAnySheet = true
+                    }
+                }) {
+                    ShoppingItemRow(item: item)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .listRowInsets(EdgeInsets())
+            .padding(.vertical, 2)
+            .background(Color(.systemBackground))
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    withAnimation {
+                        deleteShoppingItem(item)
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .tint(.red)
+            }
+        }
+    }
+    
+    // Add this method to EditableListView
+    private func deleteToDoItem(_ item: ToDoItemEntity) {
+        if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
+            // Use the existing view model function
+            todoListViewModel.deleteToDoItem(item: item)
+            
+            // Set up undo functionality
+            recentlyDeletedItem = (item, {
+                // Restore the item if the user taps Undo
+                let context = PersistenceController.shared.container.viewContext
+                let newItem = ToDoItemEntity(context: context)
+                newItem.uid = item.uid
+                newItem.task = item.task
+                newItem.category = item.category
+                newItem.priority = item.priority
+                newItem.dueDate = item.dueDate
+                newItem.isCompleted = false
+                newItem.lastEditor = Constants.emptyString
+                newItem.lastUpdated = Date()
+                newItem.latitude = 0.0
+                newItem.longitude = 0.0
+                
+                // Save the restored item
+                try? context.save()
+                
+                // Refresh the UI
+                DispatchQueue.main.async {
+                    self.todoListViewModel.updateGroupedToDoItems(updateExists: true)
+                    self.refreshTrigger = UUID()
+                }
+            })
+            
+            // Automatically dismiss the undo button after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                if self.recentlyDeletedItem?.0 === item {
+                    self.recentlyDeletedItem = nil
+                }
+            }
+            
+            locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
+        }
+    }
+    
+    // Reusable view for category labels
+    @ViewBuilder
+    private func categoryLabel(category: String, items: [ShoppingItemEntity]) -> some View {
+        HStack {
+            let emoji = item(for: category)
+            Text(items.first?.categoryEmoji ?? "✳️")
+            Text(category)
+                .foregroundColor(.primary)
+            Spacer()
+            Text("\(items.count)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.systemGray5))
+                .cornerRadius(12)
+        }
+    }
+
+    // Content for unassigned items categories
+    @ViewBuilder
+    private func unassignedItemsCategoriesContent(otherStore: String) -> some View {
+        if let categories = shoppingListViewModel.groupedItemsByStoreAndCategory[otherStore] {
+            ForEach(Array(categories.keys.sorted()), id: \.self) { category in
+                if let items = categories[category], !items.isEmpty {
+                    // Reuse the same category disclosure pattern
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { expandedCategoryMap["\(otherStore)_\(category)"] ?? false },
+                            set: { expandedCategoryMap["\(otherStore)_\(category)"] = $0 }
+                        ),
+                        content: {
+                            shoppingItemsList(items: items)
+                        },
+                        label: {
+                            categoryLabel(category: category, items: items)
+                        }
+                    )
+                    .background(Color(.systemBackground))
+                    .listRowBackground(Color(.systemBackground))
+                }
+            }
+        }
+    }
+    
     // Helper function to set up on appear
     private func setupOnAppear() {
         // Clear any existing store data to avoid defaults
@@ -1124,7 +1157,7 @@ struct EditableListView: View {
     }
     
     // Setup location manager with proper delegate pattern
-    func setupUserLocationManager() {
+    private func setupUserLocationManager() {
         guard let manager = userLocationManager else { return }
         
         manager.delegate = LocationManager.shared
@@ -1176,28 +1209,29 @@ struct EditableListView: View {
         manager.startUpdatingLocation()
     }
     
-    func shoppingItem(from product: Product, context: NSManagedObjectContext) -> ShoppingItemEntity {
-        let item = ShoppingItemEntity(context: context)
-        item.uid = UUID().uuidString
-        item.name = product.name
-        item.category = determineCategory(for: product.name, apiCategory: product.category)
-        item.brand = product.brand
-        item.gtin = product.gtin
-        item.price = Double(product.price ?? "0") ?? 0.0
-        item.dateAdded = Date()
-        item.lastUpdated = Date()
-        item.lastEditor = "User"
-
-        // Ensure emoji map is loaded
-        if shoppingListViewModel.emojiMap.isEmpty {
-            shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
-        }
-        
-        // Use the existing method
-        item.emoji = shoppingListViewModel.emojiForItemName(product.name)
-        
-        return item
-    }
+//    private func shoppingItem(from product: Product, context: NSManagedObjectContext) -> ShoppingItemEntity {
+//        let item = ShoppingItemEntity(context: context)
+//        item.uid = UUID().uuidString
+//        item.name = product.name
+//        item.category = determineCategory(for: product.name, apiCategory: product.category)
+//        item.brand = product.brand
+//        item.gtin = product.gtin
+//        item.price = Double(product.price ?? "0") ?? 0.0
+//        item.dateAdded = Date()
+//        item.lastUpdated = Date()
+//        item.lastEditor = "User"
+////        item.isPreferred =
+//
+//        // Ensure emoji map is loaded
+//        if shoppingListViewModel.emojiMap.isEmpty {
+//            shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
+//        }
+//        
+//        // Use the existing method
+//        item.emoji = shoppingListViewModel.emojiForItemName(product.name)
+//        
+//        return item
+//    }
     
     private func observeChanges() {
         DispatchQueue.main.async {
@@ -1210,25 +1244,6 @@ struct EditableListView: View {
             handleSegmentChange(selectedSegment)
         }
     }
-    
-//    private func observeChanges() {
-//        DispatchQueue.main.async {
-//            if isAdReady {
-//                handleAdChange(isAdReady)
-//            }
-//            
-//            handleSceneChange(scenePhase)
-//            
-//            if let quickAction = quickActionManager.quickAction {
-//                handleQuickActionChange(quickAction)
-//            }
-//            
-//            handleSegmentChange(selectedSegment)
-//            
-//            // Use .onChange modifier on the List instead of notification observers
-//            // The notification observers have been moved to the List view in the main body
-//        }
-//    }
     
     private func handleQAData() {
         if quickActionManager.quickAction == .isAddingToDoItem {
@@ -1291,7 +1306,7 @@ struct EditableListView: View {
     }
     
     // Modified refreshDataAndViews method with simpler but more direct approach
-    func refreshDataAndViews() {
+    private func refreshDataAndViews() {
         print("🔄 FULL REFRESH: Starting comprehensive refresh...")
         
         // First, fetch directly from Core Data
@@ -1377,6 +1392,7 @@ struct EditableListView: View {
             newItem.storeAddress = item.storeAddress
             newItem.lastUpdated = Date()
             newItem.dateAdded = item.dateAdded
+            newItem.isPreferred = item.isPreferred
             
             // Save the restored item
             try? context.save()
@@ -1398,43 +1414,6 @@ struct EditableListView: View {
             locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
         }
     }
-//    private func deleteShoppingItem(_ item: ShoppingItemEntity) {
-//        if let locationIdentifier = item.value(forKey: "storeAddress") as? String {
-//            // Use the view model to handle the deletion
-//            shoppingListViewModel.deleteShoppingItem(item: item)
-//            
-//            // Set up undo functionality
-//            recentlyDeletedItem = (item, {
-//                // Restore the item if the user taps Undo
-//                let context = PersistenceController.shared.container.viewContext
-//                let newItem = ShoppingItemEntity(context: context)
-//                newItem.uid = item.uid
-//                newItem.name = item.name
-//                newItem.category = item.category
-//                newItem.storeName = item.storeName
-//                newItem.storeAddress = item.storeAddress
-//                newItem.lastUpdated = Date()
-//                newItem.dateAdded = item.dateAdded
-//                
-//                // Save the restored item
-//                try? context.save()
-//                
-//                // Refresh the UI
-//                DispatchQueue.main.async {
-//                    self.refreshDataAndViews()
-//                }
-//            })
-//            
-//            // Automatically dismiss the undo button after a delay
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-//                if self.recentlyDeletedItem?.0 === item {
-//                    self.recentlyDeletedItem = nil
-//                }
-//            }
-//            
-//            locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
-//        }
-//    }
     
     // Method to get emoji for a category
     private func item(for category: String) -> String {
@@ -1613,199 +1592,56 @@ private struct LoadingOverlay: View {
     }
 }
 
-// MARK: - Filter Type Views
-private struct NoFilterView: View {
-    let todoListViewModel: ToDoListViewModel
-    let expandedPriorities: Set<Priority>
-    let refreshTrigger: UUID
-    let todoRowHeight: CGFloat
-    let filterType: TodoFilterType
-    let onPriorityToggle: (Priority, Bool) -> Void
-    let onDelete: (ToDoItemEntity) -> Void
+// Add this modifier to keep the animation code separate and reusable
+struct PulseAnimation: ViewModifier {
+    var isPulsing: Bool
     
-    var body: some View {
-        // In NoFilterView
-        ForEach(Priority.allCases) { priority in
-            PriorityDisclosureGroup(
-                priority: priority,
-                isExpanded: expandedPriorities.contains(priority),
-                onToggle: { onPriorityToggle(priority, $0) },
-                items: todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue },
-                refreshTrigger: refreshTrigger,
-                todoRowHeight: todoRowHeight,
-                filterType: filterType,
-                onDelete: onDelete
+    func body(content: Content) -> some View {
+        content
+            .padding(8)
+            .background(
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .scaleEffect(isPulsing ? 1.1 : 0.95)
             )
-        }
-
-        // Similarly update PriorityFilterView and CategoryFilterView
-//        ForEach(Priority.allCases) { priority in
-//            PriorityDisclosureGroup(
-//                priority: priority,
-//                isExpanded: expandedPriorities.contains(priority),
-//                onToggle: { onPriorityToggle(priority, $0) },
-//                items: todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue },
-//                refreshTrigger: refreshTrigger,
-//                todoRowHeight: todoRowHeight,
-//                filterType: filterType
-//            )
-//        }
     }
 }
 
-private struct PriorityFilterView: View {
-    let todoListViewModel: ToDoListViewModel
-    let selectedPriority: Priority
-    let expandedPriorities: Set<Priority>
-    let refreshTrigger: UUID
-    let todoRowHeight: CGFloat
-    let filterType: TodoFilterType
-    let onPriorityToggle: (Priority, Bool) -> Void
-    let onDelete: (ToDoItemEntity) -> Void  // Add this parameter
-    
-    var body: some View {
-        PriorityDisclosureGroup(
-            priority: selectedPriority,
-            isExpanded: expandedPriorities.contains(selectedPriority),
-            onToggle: { onPriorityToggle(selectedPriority, $0) },
-            items: todoListViewModel.toDoItems.filter { $0.priority == selectedPriority.rawValue },
-            refreshTrigger: refreshTrigger,
-            todoRowHeight: todoRowHeight,
-            filterType: filterType,
-            onDelete: onDelete
-        )
-    }
-}
-
-private struct CategoryFilterView: View {
-    let todoListViewModel: ToDoListViewModel
-    let expandedCategories: [String: Set<String>]
-    let refreshTrigger: UUID
-    let todoRowHeight: CGFloat
-    let filterType: TodoFilterType
-    let onCategoryToggle: (String, Bool) -> Void
-    let onDelete: (ToDoItemEntity) -> Void  // Add this parameter
-    
-    var body: some View {
-        let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
-        ForEach(grouped.keys.sorted(), id: \.self) { category in
-            CategoryDisclosureGroup(
-                category: category,
-                isExpanded: expandedCategories[category]?.contains("main") ?? false,
-                onToggle: { onCategoryToggle(category, $0) },
-                items: grouped[category] ?? [],
-                refreshTrigger: refreshTrigger,
-                todoRowHeight: todoRowHeight,
-                filterType: filterType,
-                onDelete: onDelete
-            )
-        }
-    }
-}
-
-// MARK: - Disclosure Group Views
-// Modify PriorityDisclosureGroup to include onDelete parameter
-private struct PriorityDisclosureGroup: View {
+// Section Header Views
+private struct PrioritySectionHeader: View {
     @Environment(\.colorScheme) var colorScheme
-
     let priority: Priority
-    let isExpanded: Bool
-    let onToggle: (Bool) -> Void
-    let items: [ToDoItemEntity]
-    let refreshTrigger: UUID
-    let todoRowHeight: CGFloat
-    let filterType: TodoFilterType
-    let onDelete: (ToDoItemEntity) -> Void  // Add this parameter
+    let itemCount: Int
     
     var body: some View {
-        DisclosureGroup(
-            isExpanded: Binding(
-                get: { isExpanded },
-                set: { onToggle($0) }
-            ),
-            content: {
-                if items.isEmpty {
-                    EmptyItemsView()
-                } else {
-                    ForEach(items, id: \.objectID) { item in
-                        ToDoItemRow(item: item, showCategory: filterType == .category)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: todoRowHeight)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    withAnimation {
-                                        onDelete(item)
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .tint(.red)
-                            }
-                    }
-                }
-            },
-            label: {
-                Text(priority.title)
-                    .font(.headline)
-                    .foregroundColor(priorityColor(for: priority.int16Value, colorScheme: colorScheme))
-                    .padding(.vertical, 8)
-            }
-        )
-        .id("priority-\(priority.rawValue)-\(refreshTrigger)")
-        .frame(maxWidth: .infinity)
-        .font(.subheadline)
-        .padding(.horizontal)
+        HStack {
+            Text(priority.title)
+                .font(.headline)
+                .foregroundColor(priorityColor(for: priority.int16Value, colorScheme: colorScheme))
+        }
     }
 }
 
-// Similarly modify CategoryDisclosureGroup
-private struct CategoryDisclosureGroup: View {
+private struct CategorySectionHeader: View {
     let category: String
-    let isExpanded: Bool
-    let onToggle: (Bool) -> Void
-    let items: [ToDoItemEntity]
-    let refreshTrigger: UUID
-    let todoRowHeight: CGFloat
-    let filterType: TodoFilterType
-    let onDelete: (ToDoItemEntity) -> Void  // Add this parameter
+    let itemCount: Int
     
     var body: some View {
-        DisclosureGroup(
-            isExpanded: Binding(
-                get: { isExpanded },
-                set: { onToggle($0) }
-            ),
-            content: {
-                if items.isEmpty {
-                    EmptyItemsView()
-                } else {
-                    ForEach(items, id: \.objectID) { item in
-                        ToDoItemRow(item: item, showCategory: filterType == .category)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: todoRowHeight)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    withAnimation {
-                                        onDelete(item)
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .tint(.red)
-                            }
-                    }
-                }
-            },
-            label: {
-                Text(category)
-                    .font(.headline)
-                    .padding(.vertical, 8)
-            }
-        )
-        .id("category-\(category)-\(refreshTrigger)")
-        .frame(maxWidth: .infinity)
-        .font(.subheadline)
-        .padding(.horizontal)
+        HStack {
+            Text(category)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+//            Spacer()
+//            
+//            Text("\(itemCount)")
+//                .font(.caption)
+//                .foregroundColor(.secondary)
+//                .padding(.horizontal, 8)
+//                .padding(.vertical, 4)
+//                .background(Color(.systemGray5))
+//                .cornerRadius(12)
+        }
     }
 }
 
@@ -1819,4 +1655,6 @@ private struct EmptyItemsView: View {
             .padding(.vertical, 2)
     }
 }
+
+
 

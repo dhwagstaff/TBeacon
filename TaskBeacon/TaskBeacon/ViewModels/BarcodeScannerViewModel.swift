@@ -179,9 +179,9 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
 
                     let shoppingListViewModel = ShoppingListViewModel(context: context)
                 
-                Task {
-                    await shoppingListViewModel.saveShoppingItem(item: newItem)
-                }
+//                Task {
+//                    await shoppingListViewModel.saveShoppingItemToCoreData(item: newItem)
+//                }
 
                     // ✅ **Trigger Immediate UI Refresh**
                     DispatchQueue.main.async {
@@ -325,9 +325,9 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                 do {
                     let viewModel = ShoppingListViewModel(context: context)
                     
-                    Task {
-                        await viewModel.saveShoppingItem(item: newItem)
-                    }
+//                    Task {
+//                        await viewModel.saveShoppingItemToCoreData(item: newItem)
+//                    }
                     
                     // ✅ **Trigger Immediate UI Refresh**
                     viewModel.fetchShoppingItems()
