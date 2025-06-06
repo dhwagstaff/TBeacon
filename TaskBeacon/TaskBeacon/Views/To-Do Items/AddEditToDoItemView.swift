@@ -5,11 +5,12 @@
 //  Created by Dean Wagstaff on 2/5/25.
 //
 
+import SwiftUI
 import CoreData
 import CoreLocation
 import MapKit
-import SwiftUI
 import UserNotifications
+import TaskBeacon
 
 struct AddEditToDoItemView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -40,6 +41,7 @@ struct AddEditToDoItemView: View {
     @State private var locationData = LocationData(searchQuery: "", formattedAddress: "")
     @State private var didSaveLocation = false
     @State private var locationSelectedFromSearch = false
+    @State private var selectedLocation: CLLocationCoordinate2D?
     
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
@@ -193,21 +195,22 @@ struct AddEditToDoItemView: View {
                         .disabled(taskName.isEmpty)
                 )
                 .sheet(isPresented: $showMapPicker) {
-                    MapSearchView(address: $address,
-                                  latitude: $latitude,
-                                  longitude: $longitude,
-                                  showMapPicker: $showMapPicker,
-                                  needsLocation: $needsLocation)
-                    .onDisappear {
-                        addressOrLocationName = address
-                    }
-                    .onChange(of: showMapPicker) {
-                        if !showMapPicker {  // When sheet is dismissed
-                            if latitude == 0 && longitude == 0 {
-                                needsLocation = false
-                            }
+                    ToDoMapView(
+                        cameraPosition: .region(MKCoordinateRegion(
+                            center: CLLocationCoordinate2D(
+                                latitude: latitude ?? 0.0,  // Provide default value for optional
+                                longitude: longitude ?? 0.0  // Provide default value for optional
+                            ),
+                            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                        )),
+                        onLocationSelected: { coordinate, name, address in
+                            latitude = coordinate.latitude
+                            longitude = coordinate.longitude
+                            addressOrLocationName = "\(name), \(address)"
+                            showMapPicker = false
                         }
-                    }
+                    )
+                    .environmentObject(locationManager)
                 }
                 .onChange(of: viewModel.selectedLocationAddress) {
                     if !viewModel.selectedLocationName.isEmpty {

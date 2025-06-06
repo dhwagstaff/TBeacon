@@ -165,16 +165,16 @@ struct AddEditShoppingItemView: View {
                 },
                 trailing: Button(Constants.save) {
                     Task {
-//                        await viewModel.saveShoppingItem(storeName: storeName,
-//                                                         shoppingItem: shoppingItem,
-//                                                         name: name,
-//                                                         selectedCategory: selectedCategory,
-//                                                         storeAddress: storeAddress,
-//                                                         latitude: latitude,
-//                                                         longitude: longitude,
-//                                                         expirationDate: expirationDate,
-//                                                         selectedCategoryEmoji: selectedCategoryEmoji,
-//                                                         isPreferred: isPreferred)
+                        await viewModel.saveShoppingItem(storeName: storeName,
+                                                         shoppingItem: shoppingItem,
+                                                         name: name,
+                                                         selectedCategory: selectedCategory,
+                                                         storeAddress: storeAddress,
+                                                         latitude: latitude,
+                                                         longitude: longitude,
+                                                         expirationDate: expirationDate,
+                                                         selectedCategoryEmoji: selectedCategoryEmoji,
+                                                         isPreferred: isPreferred)
                         storeName = Constants.emptyString
                         storeAddress = Constants.emptyString
                         selectedStore = nil
