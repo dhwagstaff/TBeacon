@@ -10,7 +10,6 @@ import CoreData
 import CoreLocation
 import MapKit
 import UserNotifications
-import TaskBeacon
 
 struct AddEditToDoItemView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -22,7 +21,6 @@ struct AddEditToDoItemView: View {
     @EnvironmentObject var subscriptionsManager: SubscriptionsManager
     @EnvironmentObject var entitlementManager: EntitlementManager
     
-    @State private var address = ""
     @State private var searchQuery = ""  // New state for the search query
     @State private var taskName: String = ""
     @State private var addressOrLocationName: String = ""
@@ -42,6 +40,7 @@ struct AddEditToDoItemView: View {
     @State private var didSaveLocation = false
     @State private var locationSelectedFromSearch = false
     @State private var selectedLocation: CLLocationCoordinate2D?
+    @State private var selectedPlacemark: MKPlacemark?
     
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
@@ -164,15 +163,11 @@ struct AddEditToDoItemView: View {
                             Section(
                                 header:
                                     VStack(alignment: .leading, spacing: 2) {
-                                        if !address.isEmpty {
-                                            Text("Location: \(searchQuery)")
+                                        if !addressOrLocationName.isEmpty {
+                                            Text("Location: \(addressOrLocationName)")
                                                 .font(.body)
                                                 .foregroundColor(.primary)
-                                            Text(address)
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                        } else if !addressOrLocationName.isEmpty {
-                                            Text("Location: \(addressOrLocationName)")
+                                            Text("Location: \(viewModel.mapViewFormattedAddress)")
                                                 .font(.body)
                                                 .foregroundColor(.primary)
                                         } else {
@@ -191,22 +186,34 @@ struct AddEditToDoItemView: View {
                 .navigationBarItems(
                     leading: Button(Constants.cancel) { dismissSheet() }
                         .foregroundColor(.blue),
-                    trailing: Button(Constants.save) { saveToDoItem() }
-                        .disabled(taskName.isEmpty)
+                    trailing: Button(Constants.save) {
+                        viewModel.saveToDoItem(toDoItem: toDoItem,
+                                               taskName: taskName,
+                                               selectedCategory: selectedCategory,
+                                               addressOrLocationName: addressOrLocationName,
+                                               needsLocation: needsLocation,
+                                               dueDate: dueDate,
+                                               priority: priority,
+                                               latitude: latitude,
+                                               longitude: longitude)
+                        
+                        dismissSheet()
+                    }
+                    .disabled(taskName.isEmpty)
                 )
                 .sheet(isPresented: $showMapPicker) {
                     ToDoMapView(
                         cameraPosition: .region(MKCoordinateRegion(
                             center: CLLocationCoordinate2D(
-                                latitude: latitude ?? 0.0,  // Provide default value for optional
-                                longitude: longitude ?? 0.0  // Provide default value for optional
+                                latitude: latitude ?? 0.0,
+                                longitude: longitude ?? 0.0
                             ),
                             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                         )),
-                        onLocationSelected: { coordinate, name, address in
+                        onLocationSelected: { coordinate, name in
                             latitude = coordinate.latitude
                             longitude = coordinate.longitude
-                            addressOrLocationName = "\(name), \(address)"
+                            addressOrLocationName = name
                             showMapPicker = false
                         }
                     )
@@ -258,123 +265,6 @@ struct AddEditToDoItemView: View {
         showAddTodoItem = false
         isShowingAnySheet = false
         presentationMode.wrappedValue.dismiss()
-    }
-    
-    func createDefaultToDoItem() -> ToDoItemEntity {
-        let item = ToDoItemEntity(context: viewContext)
-        item.uid = UUID().uuidString
-        item.task = Constants.emptyString
-        item.category = "Uncategorized"
-        item.addressOrLocationName = Constants.emptyString
-        item.lastUpdated = Date()
-        item.lastEditor = "User"
-        item.latitude = 0.0
-        item.longitude = 0.0
-        item.isCompleted = false
-        item.dueDate = Date()
-        item.priority = 2 // Medium priority by default
-        
-        return item
-    }
-    
-    private func saveToDoItem() {
-        var newOrUpdatedToDoItem: ToDoItemEntity?
-        
-        Task {
-            // 1. Save or update the item in Core Data via the view model
-            if toDoItem == nil {
-                newOrUpdatedToDoItem = toToDoItem(task: taskName,
-                                                  category: selectedCategory,
-                                                  addressOrLocationName: needsLocation ? addressOrLocationName : Constants.emptyString,
-                                                  lastUpdate: Date(),
-                                                  lastEditor: Constants.emptyString,
-                                                  latitude: viewModel.latitude > 0 ? viewModel.latitude : latitude ?? 0,
-                                                  longitude: viewModel.longitude > 0 ? viewModel.longitude : longitude ?? 0,
-                                                  isCompleted: false,
-                                                  dueDate: dueDate,
-                                                  priority: priority)
-                await viewModel.saveToDoItem(item: newOrUpdatedToDoItem ?? createDefaultToDoItem())
-            } else if let item = toDoItem {
-                // Update item properties...
-                if let item = toDoItem {
-                    item.task = taskName
-                    item.category = selectedCategory
-                    item.addressOrLocationName = needsLocation ? addressOrLocationName : Constants.emptyString
-                    item.lastUpdated = Date()
-                    item.lastEditor = Constants.emptyString
-                    item.latitude = viewModel.latitude > 0 ? viewModel.latitude : latitude ?? 0
-                    item.longitude = viewModel.longitude > 0 ? viewModel.longitude : longitude ?? 0
-                    item.dueDate = dueDate
-                    item.priority = priority
-                    
-                    newOrUpdatedToDoItem = item
-                    
-                    await viewModel.saveToDoItem(item: item)
-                }
-            }
-            
-            if let uid = newOrUpdatedToDoItem?.uid {
-                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: newOrUpdatedToDoItem?.latitude ?? 0, longitude: newOrUpdatedToDoItem?.longitude ?? 0), identifier: uid)
-                
-                locationManager.regionIDToItemMap[uid] = newOrUpdatedToDoItem
-            }
-
-            // 2. Fetch latest data and update view model arrays
-            do {
-                // Fetch latest items from Core Data
-                let items: [ToDoItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.toDoItem.stringValue)
-                
-                // Update view model arrays on main thread
-                await MainActor.run {
-                    viewModel.toDoItems = items
-                    viewModel.updateGroupedToDoItems(updateExists: true)
-                }
-
-                // Update LocationManager
-//                LocationManager.shared.initializeWithItems(items)
-//                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-//                    self.locationManager.loadAndMonitorAllGeofences(from: viewContext)
-//                }
-            } catch {
-                print("❌ Error saving To-Do item: \(error.localizedDescription)")
-            }
-
-            // 3. Dismiss the view on the main thread, after all updates
-            await MainActor.run {
-                // This ensures the UI only updates after the data is in sync
-                dataUpdateManager.objectWillChange.send()
-                presentationMode.wrappedValue.dismiss()
-            }
-        }
-    }
-    
-    private func toToDoItem(task: String,
-                            category: String,
-                            addressOrLocationName: String,
-                            lastUpdate: Date,
-                            lastEditor: String,
-                            latitude: Double,
-                            longitude: Double,
-                            isCompleted: Bool,
-                            dueDate: Date?,
-                            priority: Int16) -> ToDoItemEntity {
-        let item = ToDoItemEntity(context: viewContext)
-        item.uid = UUID().uuidString
-        item.task = task
-        item.category = category
-        item.addressOrLocationName = addressOrLocationName
-        item.lastUpdated = lastUpdate
-        item.lastEditor = lastEditor
-        item.latitude = latitude  // Make sure these are being set
-        item.longitude = longitude // Make sure these are being set
-        item.isCompleted = isCompleted
-        item.dueDate = dueDate
-        item.priority = priority
-        
-        // Print debug information
-        print("📍 Creating new item with location - Lat: \(latitude), Lon: \(longitude)")
-        
-        return item
     }
 }
 

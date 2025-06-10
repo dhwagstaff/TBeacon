@@ -129,9 +129,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                 print("this lat ::: \(latitude) ::: \(longitude)")
                 let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
 
-                monitorRegionAtLocation(center: coordinate, identifier: uid)
+                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
                 
-                regionIDToItemMap[uid] = item
+              //  regionIDToItemMap[uid] = item
             }
         }
     }
@@ -737,9 +737,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                       let longitude = item.value(forKey: "longitude") as? Double else { continue }
                 let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                 
-                monitorRegionAtLocation(center: coordinate, identifier: uid)
+                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
                 
-                regionIDToItemMap[uid] = item
+               // regionIDToItemMap[uid] = item
             }
         } catch {
             print("❌ Failed to load geofences: \(error.localizedDescription)")
@@ -758,7 +758,7 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
       //  print("✅ Cleared all existing geofences.")
     }
     
-    func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String) {
+    func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String, item: NSManagedObject) {
         print("in monitorRegionAtLocation ::: center ::: \(center) ::: identifer ::: \(identifier)")
         print("Currently monitored regions: \(locationManager.monitoredRegions.map { $0.identifier })")
 
@@ -777,7 +777,7 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             let maxDistance = locationManager.maximumRegionMonitoringDistance
             
             let region = CLCircularRegion(center: center,
-                                          radius: 300.0/*maxDistance*/, identifier: identifier)
+                                          radius: 500.0/*maxDistance*/, identifier: identifier)
             region.notifyOnEntry = true
             region.notifyOnExit = true
        
@@ -786,7 +786,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             print("Region details - Center: \(region.center), Radius: \(region.radius)")
             
             self.notifiedRegionIDs.insert(region.identifier)
-            
+            self.regionIDToItemMap[identifier] = item
+            print("item ::: \(item)")
+            print("regionIDToItemMap ::: \(self.regionIDToItemMap)")
             print("notifiedRegionIDs ::: \(self.notifiedRegionIDs)")
         }
     }
@@ -870,9 +872,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                     continue
                 }
                 let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                monitorRegionAtLocation(center: coordinate, identifier: uid)
+                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
                 
-                regionIDToItemMap[uid] = item
+               // regionIDToItemMap[uid] = item
             }
             
             print("✅ Monitoring \(locationManager.monitoredRegions.count) regions")
@@ -902,22 +904,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         }
     }
 
-    // Update stopMonitoring function to use value(forKey:) for maximum compatibility
-//    func stopMonitoring(for item: NSManagedObject) {
-//        print("dhw stopMonitoring")
-//
-//        if let uid = item.value(forKey: "uid") as? String {
-//            for region in locationManager.monitoredRegions {
-//                if region.identifier == uid {
-//                    locationManager.stopMonitoring(for: region)
-//                    print("Stopped monitoring region: \(region.identifier)")
-//                    regionIDToItemMap.removeValue(forKey: region.identifier)
-//                    break
-//                }
-//            }
-//        }
-//    }
-    
     func consolidateDuplicateStores() {
         print("🔄 Starting store consolidation...")
         print("📊 Initial store count: \(stores.count)")
@@ -1013,54 +999,67 @@ extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         print("DID ENTER REGION ::: \(region.identifier)")
         print("Region state in didEnterRegion: \(region.identifier)")
-        if let circularRegion = region as? CLCircularRegion {
-            print("Region center: \(circularRegion.center)")
-            print("Region radius: \(circularRegion.radius)")
-        }
         
-        guard let region = region as? CLCircularRegion else { return }
-        
-        // Check if this is the first entry and should be ignored
-        guard !ignoredFirstEntryRegionIDs.contains(region.identifier) else {
-            print("⚠️ Ignoring first entry for region: \(region.identifier)")
-            ignoredFirstEntryRegionIDs.remove(region.identifier)
-            return
-        }
-        
-        // Get the associated item
+        // In didEnterRegion:
         guard let item = regionIDToItemMap[region.identifier] else {
             print("❌ No item found for region: \(region.identifier)")
             return
         }
-        
-        print("Found item in regionIDToItemMap: \(item.entity.name)")
-        
-        // Create notification content
-        let content = UNMutableNotificationContent()
-        
-        if item.entity.name == "ToDoItemEntity" {
-            content.title = "To-Do Reminder"
-            content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete: \(item.value(forKey: "task") as? String ?? "your task")."
-        } else if item.entity.name == "ShoppingItemEntity" {
-            content.title = "Shopping Reminder"
-            content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy \(item.value(forKey: "name") as? String ?? "your item")."
-        } else {
-            print("❌ Unknown item type for notification")
-            return
-        }
-        
-        content.sound = .default
-        
-        // Create and schedule the notification
-        let request = UNNotificationRequest(identifier: region.identifier, content: content, trigger: nil)
-        
-        if self.notifiedRegionIDs.contains(region.identifier) {
-            UNUserNotificationCenter.current().add(request) { error in
-                if let error = error {
-                    print("❌ Failed to schedule notification: \(error.localizedDescription)")
-                    
-                    self.errorMessage = error.localizedDescription
-                    self.showErrorAlert = true
+
+        // Get the item's uid
+        if let itemUid = item.value(forKey: "uid") as? String {
+            // Check if this item's uid is in notifiedRegionIDs
+            if self.notifiedRegionIDs.contains(itemUid) {
+                // Create notification content
+                let content = UNMutableNotificationContent()
+                
+                // Get all items for this location
+                let items = regionIDToItemMap.filter { $0.key == itemUid }
+                    .map { $0.value }
+                    .prefix(5)  // Limit to 5 items
+                
+                let itemNames = items.compactMap { item -> String? in
+                    if let title = item.value(forKey: "title") as? String {
+                        return title
+                    }
+                    return nil
+                }
+                
+                if item.entity.name == "ToDoItemEntity" {
+                    content.title = "To-Do Reminder"
+                    if itemNames.count > 1 {
+                        content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete:\n• " + itemNames.joined(separator: "\n• ")
+                    } else if let firstItem = itemNames.first {
+                        content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete: \(firstItem)"
+                    }
+                } else if item.entity.name == "ShoppingItemEntity" {
+                    content.title = "Shopping Reminder"
+                    if itemNames.count > 1 {
+                        content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy:\n• " + itemNames.joined(separator: "\n• ")
+                    } else if let firstItem = itemNames.first {
+                        content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy: \(firstItem)"
+                    }
+                }
+                
+//                if item.entity.name == "ToDoItemEntity" {
+//                    content.title = "To-Do Reminder"
+//                    content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete: \(item.value(forKey: "task") as? String ?? "your task")."
+//                } else if item.entity.name == "ShoppingItemEntity" {
+//                    content.title = "Shopping Reminder"
+//                    content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy \(item.value(forKey: "name") as? String ?? "your item")."
+//                }
+                
+                content.sound = .default
+                
+                // Create and schedule the notification
+                let request = UNNotificationRequest(identifier: region.identifier, content: content, trigger: nil)
+                
+                UNUserNotificationCenter.current().add(request) { error in
+                    if let error = error {
+                        print("❌ Failed to schedule notification: \(error.localizedDescription)")
+                        self.errorMessage = error.localizedDescription
+                        self.showErrorAlert = true
+                    }
                 }
             }
         }
@@ -1068,55 +1067,32 @@ extension LocationManager: CLLocationManagerDelegate {
     
     func checkAndUpdateRegionMonitoring(for locationIdentifier: String) {
         // Get all items for this location, using uid
+        print(">>>> regionIDToItemMap ::: \(regionIDToItemMap) ::: locationIdentifer : \(locationIdentifier)")
         let items = regionIDToItemMap.filter { item in
-            return item.value.value(forKey: "uid") as? String == locationIdentifier
+            return item.key == locationIdentifier
         }
         
-        // Check if any items are active - simplified since both entities use the same key
+        // Check if any items are active
         let hasActiveItems = items.contains { item in
             return !(item.value.value(forKey: "isCompleted") as? Bool ?? true)
         }
         
-        // If no active items, remove from notifiedRegionIDs
-        if !hasActiveItems {
-            notifiedRegionIDs.remove(locationIdentifier)
-            for (_, item) in items {
-                stopMonitoring(for: item)
+        print("\n\n***** items ::: \(items)\n\n*****")
+        
+        // Stop monitoring and clean up all regions for this item
+        for (regionID, item) in items {
+            // Stop monitoring the region
+            
+            if let region = locationManager.monitoredRegions.first(where: { $0.identifier == regionID }) {
+                print("✅ Stopped monitoring and cleaned up region: \(regionID) for item: \(locationIdentifier)")
+                locationManager.stopMonitoring(for: region)
             }
-            print("️ Removed region \(locationIdentifier) from notifiedRegionIDs - no active items")
+            
+            // Remove from regionIDToItemMap
+            regionIDToItemMap.removeValue(forKey: regionID)
+            notifiedRegionIDs.remove(locationIdentifier)
         }
     }
-    
-//    func checkAndUpdateRegionMonitoring(for locationIdentifier: String) {
-//        // Get all items for this location, checking both address types
-//        let items = regionIDToItemMap.filter { item in
-//            if item.value.entity.name == "ToDoItemEntity" {
-//                return item.value.value(forKey: "addressOrLocationName") as? String == locationIdentifier
-//            } else if item.value.entity.name == "ShoppingItemEntity" {
-//                return item.value.value(forKey: "storeAddress") as? String == locationIdentifier
-//            }
-//            return false
-//        }
-//        
-//        // Check if any items are active
-//        let hasActiveItems = items.contains { item in
-//            if item.value.entity.name == "ToDoItemEntity" {
-//                return !(item.value.value(forKey: "isCompleted") as? Bool ?? true)
-//            } else if item.value.entity.name == "ShoppingItemEntity" {
-//                return !(item.value.value(forKey: "isCompleted") as? Bool ?? true)
-//            }
-//            return false
-//        }
-//        
-//        // If no active items, remove from notifiedRegionIDs
-//        if !hasActiveItems {
-//            notifiedRegionIDs.remove(locationIdentifier)
-//            for (_, item) in items {
-//                stopMonitoring(for: item)
-//            }
-//            print("️ Removed region \(locationIdentifier) from notifiedRegionIDs - no active items")
-//        }
-//    }
     
     func updateAllGeofenceRadii() {
         print("dhw updateAllGeofenceRadii")
@@ -1134,9 +1110,9 @@ extension LocationManager: CLLocationManagerDelegate {
             if let latitude = item.value(forKey: "latitude") as? Double,
                let longitude = item.value(forKey: "longitude") as? Double {
                 let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                monitorRegionAtLocation(center: coordinate, identifier: identifier)
+                monitorRegionAtLocation(center: coordinate, identifier: identifier, item: item)
                 
-                regionIDToItemMap[identifier] = item
+              //  regionIDToItemMap[identifier] = item
             }
         }
     }

@@ -451,7 +451,7 @@ class ShoppingListViewModel: ListsViewModel {
         
         if !completed {
             if let locationIdentifier = item.value(forKey: "uid") as? String {
-                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), identifier: locationIdentifier)
+                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), identifier: locationIdentifier, item: item)
             }
         } else {
             if let locationIdentifier = item.value(forKey: "uid") as? String {
@@ -460,6 +460,35 @@ class ShoppingListViewModel: ListsViewModel {
         }
                         
         objectWillChange.send()
+    }
+    
+    func createDefaultShoppingItem() -> ShoppingItemEntity {
+        let item = ShoppingItemEntity(context: viewContext)
+        item.uid = UUID().uuidString
+        item.name = Constants.emptyString
+        item.category = "Uncategorized"
+        item.storeName = Constants.emptyString
+        item.storeAddress = Constants.emptyString
+        item.lastUpdated = Date()
+        item.lastEditor = "User"
+        item.latitude = 0.0
+        item.longitude = 0.0
+        item.isCompleted = false
+        item.expirationDate = Date()
+        item.priority = 2 // Medium priority by default
+        item.brand = Constants.emptyString
+        item.barcode = Constants.emptyString
+        item.categoryEmoji = Constants.emptyString
+        item.dateAdded = Date()
+        item.emoji = Constants.emptyString
+        item.gtin = Constants.emptyString
+        item.isPreferred = false
+        item.price = 0
+        item.productImage = nil
+        item.unitCount = 0
+        item.volume = 0
+        
+        return item
     }
     
     func emojiForItemName(_ name: String) -> String {
@@ -724,9 +753,9 @@ class ShoppingListViewModel: ListsViewModel {
                     updateGroupedItemsInternal()
                     
                     if let uid = itemToSave.uid {
-                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid)
+                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid, item: itemToSave)
                         
-                        locationManager.regionIDToItemMap[uid] = itemToSave
+                      //  locationManager.regionIDToItemMap[uid] = itemToSave
                     }
                     
                     // Update view model state directly

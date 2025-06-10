@@ -380,40 +380,40 @@ struct UnifiedStoreSelectionView: View {
                 
                 Spacer()
                 
-                if store.isPreferred {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.yellow)
-                        .padding(.trailing, 8)
-                } else {
-                    Button(action: {
-                        Task {
-                            let context = PersistenceController.shared.container.viewContext
-                            let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
-                            fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
-                                                                 store.name, store.address)
-
-                            if let items = try? context.fetch(fetchRequest), let item = items.first {
-                                // Existing item: update
-                                item.isPreferred = true
-                                await viewModel.saveShoppingItemToCoreData(item: item)
-                            } else {
-                                // New item: create and set preferred
-                                let newItem = ShoppingItemEntity(context: context)
-                                newItem.storeName = store.name
-                                newItem.storeAddress = store.address
-                                newItem.isPreferred = true
-                                // Set other required fields as needed
-                                await viewModel.saveShoppingItemToCoreData(item: newItem)
-                            }
-                            
-                            viewModel.processStores(searchQuery: searchQuery, selectedCategoryIndex: selectedCategoryIndex)
-                        }
-                    }) {
-                        Image(systemName: "star")
-                            .foregroundColor(.yellow)
-                            .padding(.trailing, 8)
-                    }
-                }
+//                if store.isPreferred {
+//                    Image(systemName: "star.fill")
+//                        .foregroundColor(.yellow)
+//                        .padding(.trailing, 8)
+//                } else {
+//                    Button(action: {
+//                        Task {
+//                            let context = PersistenceController.shared.container.viewContext
+//                            let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+//                            fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
+//                                                                 store.name, store.address)
+//
+//                            if let items = try? context.fetch(fetchRequest), let item = items.first {
+//                                // Existing item: update
+//                                item.isPreferred = true
+//                                await viewModel.saveShoppingItemToCoreData(item: item)
+//                            } else {
+//                                // New item: create and set preferred
+//                                let newItem = ShoppingItemEntity(context: context)
+//                                newItem.storeName = store.name
+//                                newItem.storeAddress = store.address
+//                                newItem.isPreferred = true
+//                                // Set other required fields as needed
+//                                await viewModel.saveShoppingItemToCoreData(item: newItem)
+//                            }
+//                            
+//                            viewModel.processStores(searchQuery: searchQuery, selectedCategoryIndex: selectedCategoryIndex)
+//                        }
+//                    }) {
+//                        Image(systemName: "star")
+//                            .foregroundColor(.yellow)
+//                            .padding(.trailing, 8)
+//                    }
+//                }
                 
                 if let userLocation = locationManager.userLocation {
                     let distance = userLocation.distance(from: CLLocation(
@@ -446,25 +446,29 @@ struct UnifiedStoreSelectionView: View {
     private var statusMessagesView: some View {
         Group {
             if locationManager.isFetching {
-                VStack(spacing: 20) {
-                    ProgressView()
-                        .scaleEffect(2.0)
-                        .tint(.accentColor)
-                        .padding()
-                        .background(
-                            Circle()
-                                .fill(Color(.systemBackground))
-                                .shadow(radius: 5)
-                        )
-                    
-                    Text("Finding stores...")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
+                if locationManager.stores.isEmpty {
+                    LoadingOverlay()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
-                .padding()
+                
+//                VStack(spacing: 20) {
+//                    ProgressView()
+//                        .scaleEffect(2.0)
+//                        .tint(.accentColor)
+//                        .padding()
+//                        .background(
+//                            Circle()
+//                                .fill(Color(.systemBackground))
+//                                .shadow(radius: 5)
+//                        )
+//                    
+//                    Text("Finding stores...")
+//                        .font(.title3)
+//                        .fontWeight(.medium)
+//                        .foregroundColor(.primary)
+//                }
+//                .frame(maxWidth: .infinity, maxHeight: .infinity)
+//                .background(Color(.systemBackground))
+//                .padding()
             } else if locationError {
                 locationErrorView
             } else if cannotFetch {

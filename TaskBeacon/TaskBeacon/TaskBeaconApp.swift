@@ -94,7 +94,7 @@ struct TaskBeaconApp: App {
                         for item in shoppingItems {
                             if item.latitude != 0, item.longitude != 0 {
                                 let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                                locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString)
+                                locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
 //                                locationManager.startMonitoring(identifier: item.uid ?? UUID().uuidString, coordinate: coordinate, item: item)
                             }
                         }

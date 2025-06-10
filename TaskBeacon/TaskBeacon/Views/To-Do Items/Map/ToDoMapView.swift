@@ -10,7 +10,8 @@ import SwiftUI
 
 struct ToDoMapView: View {
     @EnvironmentObject var locationManager: LocationManager
-    
+    @EnvironmentObject var viewModel: ToDoListViewModel
+
     @Environment(\.dismiss) private var dismiss
 
     @State private var cameraPosition: MapCameraPosition
@@ -20,7 +21,8 @@ struct ToDoMapView: View {
     @State private var isSearching = false
     @State private var mapRegion: MKCoordinateRegion?
 
-    var onLocationSelected: ((CLLocationCoordinate2D, String, String) -> Void)?
+//    var onLocationSelected: ((CLLocationCoordinate2D, String, MKPlacemark) -> Void)?
+    var onLocationSelected: ((CLLocationCoordinate2D, String) -> Void)?
     
     init(
         cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic),
@@ -28,7 +30,8 @@ struct ToDoMapView: View {
         searchText: String = "",
         searchResults: [MKMapItem] = [],
         isSearching: Bool = false,
-        onLocationSelected: ((CLLocationCoordinate2D, String, String) -> Void)? = nil
+//        onLocationSelected: ((CLLocationCoordinate2D, String, MKPlacemark) -> Void)? = nil
+        onLocationSelected: ((CLLocationCoordinate2D, String) -> Void)? = nil
     ) {
         _cameraPosition = State(initialValue: cameraPosition)
         _selectedItem = State(initialValue: selectedItem)
@@ -61,10 +64,14 @@ struct ToDoMapView: View {
                     if let selected = selectedItem {
                         handleLocationSelection(selected)
                         
-                        onLocationSelected?(selected.placemark.coordinate, selected.name ?? "Unknown location name", formatAddress(from:selected.placemark))
+                        let address = formatAddress(from: selected.placemark)
+                        viewModel.lookupBusinessName(from: address) { businessName in
+                            onLocationSelected?(selected.placemark.coordinate,
+                                                returnLocationName(selectedPlacemarkName: selected.name ?? "Unknown location name"))
+                        }
                     }
                 }) {
-                    Text("Set Location")
+                    Text("Use Location")
                         .foregroundColor(.blue)
                 }
                 .padding(.trailing)
@@ -145,6 +152,14 @@ struct ToDoMapView: View {
         }
     }
     
+    func returnLocationName(selectedPlacemarkName: String) -> String {
+        if viewModel.mapViewFormattedAddress.contains(selectedPlacemarkName) {
+            return viewModel.businessName
+        }
+        
+        return selectedPlacemarkName
+    }
+    
     private func updateCameraPosition() {
         if let userLocation = locationManager.userLocation {
             cameraPosition = .region(MKCoordinateRegion(
@@ -216,13 +231,11 @@ struct ToDoMapView: View {
         )
         mapRegion = newRegion
         cameraPosition = .region(newRegion)
-        handleLocationSelection(item)
+       // handleLocationSelection(item)
     }
     
     private func handleLocationSelection(_ item: MKMapItem) {
         let coordinate = item.placemark.coordinate
-        let name = item.name ?? "Selected Location"
-        let address = formatAddress(from: item.placemark)
         
         let newRegion = MKCoordinateRegion(
             center: coordinate,
@@ -233,25 +246,20 @@ struct ToDoMapView: View {
     }
     
     private func formatAddress(from placemark: MKPlacemark) -> String {
-        var components: [String] = []
-        
-        if let thoroughfare = placemark.thoroughfare {
-            components.append(thoroughfare)
-        }
-        if let locality = placemark.locality {
-            components.append(locality)
-        }
-        if let administrativeArea = placemark.administrativeArea {
-            components.append(administrativeArea)
-        }
-        if let postalCode = placemark.postalCode {
-            components.append(postalCode)
+        if let addressNumber = placemark.subThoroughfare,
+           let street = placemark.thoroughfare,
+           let city = placemark.locality,
+           let state = placemark.administrativeArea,
+           let name = placemark.name {
+            let basicAddress = "\(addressNumber) \(street), \(city), \(state)"
+            viewModel.mapViewFormattedAddress = basicAddress
         }
         
-        return components.joined(separator: ", ")
+        return viewModel.mapViewFormattedAddress
     }
 }
 
 //#Preview {
 //    ToDoMapView()
 //}
+

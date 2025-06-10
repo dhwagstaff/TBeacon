@@ -8,6 +8,7 @@
 import CoreData
 import CoreLocation
 import Foundation
+import MapKit
 import SwiftUI
 
 class ToDoListViewModel: ListsViewModel {
@@ -23,6 +24,9 @@ class ToDoListViewModel: ListsViewModel {
     private var viewContext: NSManagedObjectContext
     private let customCategoriesKey = "CustomToDoCategories"
     private let locationManager: LocationManager
+
+    var mapViewFormattedAddress = Constants.emptyString
+    var businessName = Constants.emptyString
 
     init(context: NSManagedObjectContext) {
         self.viewContext = context
@@ -58,7 +62,126 @@ class ToDoListViewModel: ListsViewModel {
         }
     }
     
-    func saveToDoItem(item: ToDoItemEntity) async {
+    func saveToDoItem(toDoItem: ToDoItemEntity?,
+                      taskName: String,
+                      selectedCategory: String,
+                      addressOrLocationName: String,
+                      needsLocation: Bool,
+                      dueDate: Date,
+                      priority: Int16,
+                      latitude: Double?,
+                      longitude: Double?) {
+        var newOrUpdatedToDoItem: ToDoItemEntity?
+        
+        Task {
+            // 1. Save or update the item in Core Data via the view model
+            if toDoItem == nil {
+                newOrUpdatedToDoItem = toToDoItem(task: taskName,
+                                                  category: selectedCategory,
+                                                  addressOrLocationName: needsLocation ? addressOrLocationName : Constants.emptyString,
+                                                  lastUpdate: Date(),
+                                                  lastEditor: Constants.emptyString,
+                                                  latitude: latitude ?? 0,
+                                                  longitude: longitude ?? 0,
+                                                  isCompleted: false,
+                                                  dueDate: dueDate,
+                                                  priority: priority)
+                await saveToDoItemToCoreData(item: newOrUpdatedToDoItem ?? createDefaultToDoItem())
+            } else if let item = toDoItem {
+                // Update item properties...
+                if let item = toDoItem {
+                    item.task = taskName
+                    item.category = selectedCategory
+                    item.addressOrLocationName = needsLocation ? addressOrLocationName : Constants.emptyString
+                    item.lastUpdated = Date()
+                    item.lastEditor = Constants.emptyString
+                    item.latitude = latitude ?? 0
+                    item.longitude = longitude ?? 0
+                    item.dueDate = dueDate
+                    item.priority = priority
+                    
+                    newOrUpdatedToDoItem = item
+                    
+                    await saveToDoItemToCoreData(item: item)
+                }
+            }
+            
+            if let uid = newOrUpdatedToDoItem?.uid {
+                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: newOrUpdatedToDoItem?.latitude ?? 0, longitude: newOrUpdatedToDoItem?.longitude ?? 0), identifier: uid, item: newOrUpdatedToDoItem ?? createDefaultToDoItem())
+                
+              //  locationManager.regionIDToItemMap[uid] = newOrUpdatedToDoItem
+            }
+
+            // 2. Fetch latest data and update view model arrays
+            do {
+                // Fetch latest items from Core Data
+                let items: [ToDoItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.toDoItem.stringValue)
+                
+                // Update view model arrays on main thread
+                await MainActor.run {
+                    toDoItems = items
+                    updateGroupedToDoItems(updateExists: true)
+                }
+            } catch {
+                print("❌ Error saving To-Do item: \(error.localizedDescription)")
+            }
+
+            // 3. Dismiss the view on the main thread, after all updates
+            await MainActor.run {
+                // This ensures the UI only updates after the data is in sync
+                DataUpdateManager.shared.objectWillChange.send()
+               // presentationMode.wrappedValue.dismiss()
+            }
+        }
+    }
+    
+    func createDefaultToDoItem() -> ToDoItemEntity {
+        let item = ToDoItemEntity(context: viewContext)
+        item.uid = UUID().uuidString
+        item.task = Constants.emptyString
+        item.category = "Uncategorized"
+        item.addressOrLocationName = Constants.emptyString
+        item.lastUpdated = Date()
+        item.lastEditor = "User"
+        item.latitude = 0.0
+        item.longitude = 0.0
+        item.isCompleted = false
+        item.dueDate = Date()
+        item.priority = 2 // Medium priority by default
+        
+        return item
+    }
+    
+    private func toToDoItem(task: String,
+                            category: String,
+                            addressOrLocationName: String,
+                            lastUpdate: Date,
+                            lastEditor: String,
+                            latitude: Double,
+                            longitude: Double,
+                            isCompleted: Bool,
+                            dueDate: Date?,
+                            priority: Int16) -> ToDoItemEntity {
+        let item = ToDoItemEntity(context: viewContext)
+        item.uid = UUID().uuidString
+        item.task = task
+        item.category = category
+        item.addressOrLocationName = addressOrLocationName
+        item.lastUpdated = lastUpdate
+        item.lastEditor = lastEditor
+        item.latitude = latitude  // Make sure these are being set
+        item.longitude = longitude // Make sure these are being set
+        item.isCompleted = isCompleted
+        item.dueDate = dueDate
+        item.priority = priority
+        
+        // Print debug information
+        print("📍 Creating new item with location - Lat: \(latitude), Lon: \(longitude)")
+        
+        return item
+    }
+    
+    func saveToDoItemToCoreData(item: ToDoItemEntity) async {
         let context = viewContext
         
         do {
@@ -77,6 +200,8 @@ class ToDoListViewModel: ListsViewModel {
             errorMessage = error.localizedDescription
             showErrorAlert = true
         }
+        
+        businessName = Constants.emptyString
     }
     
     func updateGroupedToDoItems(updateExists: Bool) {
@@ -94,6 +219,64 @@ class ToDoListViewModel: ListsViewModel {
             
             self.refreshTrigger = UUID()
             self.objectWillChange.send()
+        }
+    }
+    
+    func lookupBusinessName(from address: String, completion: @escaping (String?) -> Void) {
+        // First, geocode the address to get coordinates
+        let geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(address) { placemarks, error in
+            if let error = error {
+                print("❌ Geocoding error: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            
+            guard let placemark = placemarks?.first,
+                  let location = placemark.location else {
+                print("❌ No location found for address")
+                completion(nil)
+                return
+            }
+            
+            // Create a search request using the coordinates
+            let searchRequest = MKLocalSearch.Request()
+            searchRequest.naturalLanguageQuery = "restaurant" // or "business" or "store"
+            searchRequest.region = MKCoordinateRegion(
+                center: location.coordinate,
+                latitudinalMeters: 100, // Search within 100 meters
+                longitudinalMeters: 100
+            )
+            
+            // Create and start the search
+            let search = MKLocalSearch(request: searchRequest)
+            search.start { response, error in
+                if let error = error {
+                    print("❌ Business lookup error: \(error.localizedDescription)")
+                    completion(nil)
+                    return
+                }
+                
+                // Get the first result
+                if let firstItem = response?.mapItems.first {
+                    // Get just the business name
+                    if let busName = firstItem.name {
+                        print("✅ Found business: \(busName)")
+                        
+                        if self.businessName.isEmpty || !self.businessName.contains(busName) {
+                            self.businessName = busName
+                            
+                            completion(self.businessName)  // Only return the business name
+                        }
+                    }
+                    
+                    completion(nil)
+                    
+                } else {
+                    print("❌ No business found at address")
+                    completion(nil)
+                }
+            }
         }
     }
     
@@ -121,17 +304,15 @@ class ToDoListViewModel: ListsViewModel {
         
         // Save the item to Core Data
         Task {
-            await saveToDoItem(item: item)
+            await saveToDoItemToCoreData(item: item)
         }
         
         if !completed {
             if let locationIdentifier = item.value(forKey: "uid") as? String {
-//            if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
-                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), identifier: locationIdentifier)
+                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), identifier: locationIdentifier, item: item ?? createDefaultToDoItem())
             }
         } else {
             if let locationIdentifier = item.value(forKey: "uid") as? String {
-//            if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
                 locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
             }
         }
@@ -234,22 +415,5 @@ class ToDoListViewModel: ListsViewModel {
     
     private func loadCustomCategories() {
         allCategories = getAllToDoCategories()
-    }
-
-    func createDefaultToDoItem() -> ToDoItemEntity {
-        let item = ToDoItemEntity(context: viewContext)
-        item.uid = UUID().uuidString
-        item.task = ""
-        item.category = "Uncategorized"
-        item.addressOrLocationName = ""
-        item.lastUpdated = Date()
-        item.lastEditor = "User"
-        item.latitude = 0.0
-        item.longitude = 0.0
-        item.isCompleted = false
-        item.dueDate = Date()
-        item.priority = 2 // Medium priority by default
-        
-        return item
     }
 }

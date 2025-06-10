@@ -158,7 +158,7 @@ struct EditableListView: View {
                             shoppingListContent
                         } else { // TO DO'S
                             todoListContent
-                                .frame(height: geometry.size.height * 0.6)
+                                .frame(height: geometry.size.height * 0.9)
                         }
                     }
                     .listStyle(.plain)
@@ -846,9 +846,9 @@ struct EditableListView: View {
                     for item in shoppingListViewModel.shoppingItems {
                         if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
                             let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                            locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString)
+                            locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
                             
-                            locationManager.regionIDToItemMap[uid] = item
+                          //  locationManager.regionIDToItemMap[uid] = item
                         }
                     }
                 }
@@ -1041,7 +1041,7 @@ struct EditableListView: View {
     
     // Add this method to EditableListView
     private func deleteToDoItem(_ item: ToDoItemEntity) {
-        if let locationIdentifier = item.value(forKey: "addressOrLocationName") as? String {
+        if let locationIdentifier = item.value(forKey: "uid") as? String {
             // Use the existing view model function
             todoListViewModel.deleteToDoItem(item: item)
             
@@ -1077,6 +1077,8 @@ struct EditableListView: View {
                     self.recentlyDeletedItem = nil
                 }
             }
+            
+            print("in deleteToDoitem locationIdentifier : \(locationIdentifier)")
             
             locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
         }
@@ -1208,30 +1210,6 @@ struct EditableListView: View {
         // Start updating location
         manager.startUpdatingLocation()
     }
-    
-//    private func shoppingItem(from product: Product, context: NSManagedObjectContext) -> ShoppingItemEntity {
-//        let item = ShoppingItemEntity(context: context)
-//        item.uid = UUID().uuidString
-//        item.name = product.name
-//        item.category = determineCategory(for: product.name, apiCategory: product.category)
-//        item.brand = product.brand
-//        item.gtin = product.gtin
-//        item.price = Double(product.price ?? "0") ?? 0.0
-//        item.dateAdded = Date()
-//        item.lastUpdated = Date()
-//        item.lastEditor = "User"
-////        item.isPreferred =
-//
-//        // Ensure emoji map is loaded
-//        if shoppingListViewModel.emojiMap.isEmpty {
-//            shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
-//        }
-//        
-//        // Use the existing method
-//        item.emoji = shoppingListViewModel.emojiForItemName(product.name)
-//        
-//        return item
-//    }
     
     private func observeChanges() {
         DispatchQueue.main.async {
@@ -1410,7 +1388,10 @@ struct EditableListView: View {
             }
         }
         
+        print("in deleteShoppingItem")
         if let locationIdentifier = item.value(forKey: "storeAddress") as? String {
+            print("in deleteShoppingItem locationIdentifier : \(locationIdentifier)")
+
             locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
         }
     }
@@ -1554,7 +1535,7 @@ struct EditableListView: View {
 }
 
 // Add this loading view component
-private struct LoadingOverlay: View {
+struct LoadingOverlay: View {
     var body: some View {
         ZStack {
             Color(.systemBackground)
