@@ -117,16 +117,27 @@ struct EditableListView: View {
     @State private var isShowingLoadingOverlay = false
     @State private var expandedPriorities: Set<Priority> = Set(Priority.allCases)
     @State private var isPreferred: Bool = false
-    
+    @State private var taskBeaconRewardsIsShowing = false
+    @State private var adCheckTimer: Timer?
+    @State private var hasCancelledAd = false
+
     private static var isRefreshing = false
     private var userLocationManager: CLLocationManager?
-    
+        
     let todoRowHeight = 100.0
     
     private var filteredByPriorityItems: [ToDoItemEntity] {
         todoListViewModel.toDoItems.filter { $0.priority == selectedPriority.int16Value }
     }
     
+    private var shouldShowRewardedAdSection: Bool {
+        !entitlementManager.isPremiumUser && appDelegate.adManager.canRequestAds
+    }
+
+    private var shouldShowRewardedInterstitialAdView: Bool {
+        shouldShowRewardedAdSection && !taskBeaconRewardsIsShowing && !appDelegate.adManager.isCancelled
+    }
+        
     // MARK: - Computed Properties
     private var emptyStateView: some View {
         VStack(spacing: 20) {
@@ -512,353 +523,376 @@ struct EditableListView: View {
     }
         
     var body: some View {
-        ZStack(alignment: .bottom) {
-            NavigationView {
-                VStack {
-                    if let product = selectedProduct {
-                        ProductInfoView(product: product, stores: availableStores)
-                    }
-                    
-                    if shoppingListViewModel.shoppingItems.isEmpty && todoListViewModel.toDoItems.isEmpty {
-                        EmptyStateView()
-                            .environmentObject(shoppingListViewModel)
-                            .environmentObject(todoListViewModel)
-                    } else {
-                        itemTypePicker
-                        if selectedSegment == "To-Do" {
-                            HStack {
-                                Menu {
-                                    Button(action: {
-                                        filterType = .none
-                                    }) {
-                                        HStack {
-                                            Text("None")
-                                            if filterType == .none {
-                                                Image(systemName: "checkmark")
-                                            }
+        NavigationView {
+            VStack {
+                if let product = selectedProduct {
+                    ProductInfoView(product: product, stores: availableStores)
+                }
+                
+                if shoppingListViewModel.shoppingItems.isEmpty && todoListViewModel.toDoItems.isEmpty {
+                    EmptyStateView()
+                        .environmentObject(shoppingListViewModel)
+                        .environmentObject(todoListViewModel)
+                } else {
+                    itemTypePicker
+                    if selectedSegment == "To-Do" {
+                        HStack {
+                            Menu {
+                                Button(action: {
+                                    filterType = .none
+                                }) {
+                                    HStack {
+                                        Text("None")
+                                        if filterType == .none {
+                                            Image(systemName: "checkmark")
                                         }
                                     }
-                                        
+                                }
+                                
+                                Button(action: {
+                                    filterType = .category
+                                }) {
+                                    HStack {
+                                        Text("Category")
+                                        if filterType == .category {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                                
+                                Menu {
                                     Button(action: {
-                                        filterType = .category
+                                        filterType = .priority
+                                        selectedPriority = .high
                                     }) {
                                         HStack {
-                                            Text("Category")
-                                            if filterType == .category {
+                                            Text("High")
+                                            if filterType == .priority && selectedPriority == .high {
                                                 Image(systemName: "checkmark")
                                             }
                                         }
                                     }
                                     
-                                    Menu {
-                                        Button(action: {
-                                            filterType = .priority
-                                            selectedPriority = .high
-                                        }) {
-                                            HStack {
-                                                Text("High")
-                                                if filterType == .priority && selectedPriority == .high {
-                                                    Image(systemName: "checkmark")
-                                                }
-                                            }
-                                        }
-                                        
-                                        Button(action: {
-                                            filterType = .priority
-                                            selectedPriority = .medium
-                                        }) {
-                                            HStack {
-                                                Text("Medium")
-                                                if filterType == .priority && selectedPriority == .medium {
-                                                    Image(systemName: "checkmark")
-                                                }
-                                            }
-                                        }
-                                        
-                                        Button(action: {
-                                            filterType = .priority
-                                            selectedPriority = .low
-                                        }) {
-                                            HStack {
-                                                Text("Low")
-                                                if filterType == .priority && selectedPriority == .low {
-                                                    Image(systemName: "checkmark")
-                                                }
-                                            }
-                                        }
-                                    } label: {
+                                    Button(action: {
+                                        filterType = .priority
+                                        selectedPriority = .medium
+                                    }) {
                                         HStack {
-                                            Text("Priority")
-                                            if filterType == .priority {
+                                            Text("Medium")
+                                            if filterType == .priority && selectedPriority == .medium {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                    
+                                    Button(action: {
+                                        filterType = .priority
+                                        selectedPriority = .low
+                                    }) {
+                                        HStack {
+                                            Text("Low")
+                                            if filterType == .priority && selectedPriority == .low {
                                                 Image(systemName: "checkmark")
                                             }
                                         }
                                     }
                                 } label: {
                                     HStack {
-                                        Spacer()
-                                        
-                                        Image(systemName: "line.3.horizontal.decrease.circle")
-                                        Text(filterType == .category ? "Filter by Category" :
-                                             filterType == .priority ? "Filter by \(selectedPriority.title)" :
-                                             "Filter Options")
+                                        Text("Priority")
+                                        if filterType == .priority {
+                                            Image(systemName: "checkmark")
+                                        }
                                     }
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal)
                                 }
-                                
-                                Spacer()
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    
+                                    Image(systemName: "line.3.horizontal.decrease.circle")
+                                    Text(filterType == .category ? "Filter by Category" :
+                                            filterType == .priority ? "Filter by \(selectedPriority.title)" :
+                                            "Filter Options")
+                                }
+                                .foregroundColor(.blue)
+                                .padding(.horizontal)
                             }
-                            .padding(.vertical, 8)
-                            .background(Color(.systemBackground))
+                            
+                            Spacer()
                         }
-                        
-                        shoppingOrTodoList
-                            .id("shopping-list-\(refreshTrigger)-\(forceViewUpdate)")
-                        
-                        if !entitlementManager.isPremiumUser {
-                            RewardedAdSection(showAd: $appDelegate.showAd,
-                                              isAdReady: $appDelegate.isAdReady,
-                                              adManager: appDelegate.adManager)
-                        }
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground))
                     }
                     
-                    if isShowingLoadingOverlay {
-                        LoadingOverlay()
+                    shoppingOrTodoList
+                        .id("shopping-list-\(refreshTrigger)-\(forceViewUpdate)")
+                }
+                
+                if isShowingLoadingOverlay {
+                    LoadingOverlay()
+                }
+                
+                // Then, handle the RewardedInterstitialAdView separately
+                if shouldShowRewardedInterstitialAdView {
+                    RewardedInterstitialAdView(
+                        showAd: $appDelegate.showAd,
+                        isAdReady: $appDelegate.isAdReady,
+                        onRewardEarned: { amount, type in
+                            print("🎉 Reward Earned: \(amount) \(type)")
+                        },
+                        adManager: appDelegate.adManager
+                    )
+                }
+            }
+            .background(Color(.systemBackground))
+            .navigationTitle("")
+            .toolbar {
+                // ✅ Settings Button (Leading)
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showSettings.toggle() }) {
+                        Image(systemName: "gearshape.fill")
+                            .imageScale(.large)
+                            .foregroundColor(.blue)
                     }
                 }
-                .background(Color(.systemBackground))
-                .navigationTitle("")
-                .toolbar {
-                    // ✅ Settings Button (Leading)
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: { showSettings.toggle() }) {
-                            Image(systemName: "gearshape.fill")
+                
+                // ✅ Barcode Scanner Button (Trailing)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack {
+                        Button(action: {
+                            Task {
+                                if await permissionManager.checkAndRequestPermission(for: .camera) {
+                                    isScanning = true
+                                }
+                            }
+                        }) {
+                            Image(systemName: "barcode.viewfinder")
                                 .imageScale(.large)
                                 .foregroundColor(.blue)
                         }
-                    }
-                    
-                    // ✅ Barcode Scanner Button (Trailing)
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        HStack {
-                            Button(action: {
-                                Task {
-                                    if await permissionManager.checkAndRequestPermission(for: .camera) {
-                                        isScanning = true
+                        
+                        // Add Button
+                        Menu {
+                            Button {
+                                selectedSegment = "Shopping"
+                                
+                                // Show loading overlay
+                                withAnimation(.easeIn(duration: 0.3)) {
+                                    if locationManager.stores.isEmpty {
+                                        isShowingLoadingOverlay = true
                                     }
                                 }
-                            }) {
-                                Image(systemName: "barcode.viewfinder")
-                                    .imageScale(.large)
+                                
+                                // Hide loading overlay after 3 seconds
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        isShowingLoadingOverlay = false
+                                    }
+                                }
+                                
+                                shoppingListViewModel.beginAddFlow {
+                                    showAddShoppingItem = true
+                                    isShowingAnySheet = true
+                                }
+                            } label: {
+                                Label("Shopping Item", systemImage: ImageSymbolNames.cartFill)
                                     .foregroundColor(.blue)
                             }
                             
-                            // Add Button
-                            Menu {
-                                Button {
-                                    selectedSegment = "Shopping"
-                                    
-                                    // Show loading overlay
-                                    withAnimation(.easeIn(duration: 0.3)) {
-                                        if locationManager.stores.isEmpty {
-                                            isShowingLoadingOverlay = true
-                                        }
-                                    }
-                                    
-                                    // Hide loading overlay after 3 seconds
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-                                        withAnimation(.easeOut(duration: 0.3)) {
-                                            isShowingLoadingOverlay = false
-                                        }
-                                    }
-                                    
-                                    shoppingListViewModel.beginAddFlow {
-                                        showAddShoppingItem = true
-                                        isShowingAnySheet = true
-                                    }
-                                } label: {
-                                    Label("Shopping Item", systemImage: ImageSymbolNames.cartFill)
-                                        .foregroundColor(.blue)
-                                }
-                                
-                                Button {
-                                    showAddTodoItem = true
-                                    selectedSegment = "To-Do"
-                                    isShowingAnySheet = true
-                                } label: {
-                                    Label("To-Do Item", systemImage: "checklist")
-                                        .foregroundColor(.green)
-                                }
+                            Button {
+                                showAddTodoItem = true
+                                selectedSegment = "To-Do"
+                                isShowingAnySheet = true
                             } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 22))
+                                Label("To-Do Item", systemImage: "checklist")
+                                    .foregroundColor(.green)
                             }
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 22))
                         }
                     }
-                }
-                .background(Color(.systemBackground))
-                .navigationTitle("")
-                .fullScreenCover(isPresented: Binding(
-                    get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
-                    set: { isScanning = $0 }
-                )) {
-                    BarcodeScannerView { barcode in
-                        isScanning = false
-                        barcodeScannerViewModel.fetchProductDetails(barcode: barcode, completion: { item in
-                            if let item = item {
-                                scannedItem = item
-                                
-                                Task {
-                                    var location: CLLocation?
-                                    if let userCoordinate = self.userLocation {
-                                        location = CLLocation(latitude: userCoordinate.latitude, longitude: userCoordinate.longitude)
-                                    }
-                                    
-                                    await locationManager.searchNearbyStores()
-                                    
-                                    await MainActor.run {
-                                        mkMapItems = locationManager.stores
-                                        showStoreSelectionSheet = true
-                                    }
-                                }
-                            } else {
-                                showErrorMessage = "❌ Product not found."
-                            }
-                        })
-                    }
-                }
-                .sheet(isPresented: $showStoreSelectionSheet, onDismiss: {
-                    // In sheet onDismiss handler after updating the item and before calling the grouping function
-                    if shoppingListViewModel.emojiMap.isEmpty {
-                        shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
-                    }
-                                        
-                    if let item = selectedShoppingItem, let store = selectedStore {
-                        // Update the item with store information
-                        item.storeName = storeName
-                        item.storeAddress = storeAddress
-                        
-                        if let latitude = latitude, let longitude = longitude {
-                            item.latitude = latitude
-                            item.longitude = longitude
-                        }
-                        
-                        if let item = selectedShoppingItem {
-                            // Ensure emoji is set when assigning a store
-                            if item.emoji == nil || item.emoji?.isEmpty == true {
-                                // Make sure emoji map is loaded
-                                if shoppingListViewModel.emojiMap.isEmpty {
-                                    shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
-                                }
-                                
-                                // Set emoji based on item name
-                                let emoji = shoppingListViewModel.emojiForItemName(item.name ?? "")
-                                item.emoji = emoji
-                            }
-                        }
-                        
-                        // Save to Core Data
-//                        do {
-//                            try viewContext.save()
-//                            print("💾 Successfully saved to Core Data")
-//                            
-//                            DispatchQueue.main.async {
-//                                // First, fetch fresh data from Core Data
-//                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-//                                if let items = try? viewContext.fetch(request) {
-//                                    // Update the view model's data
-//                                    shoppingListViewModel.shoppingItems = items
-//                                    
-//                                    // Clear and rebuild the groupings
-//                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
-//                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
-//                                    
-//                                    // Force view refresh
-//                                    refreshTrigger = UUID()
-//                                }
-//                            }
-//                        } catch {
-//                            print("❌ Error saving to Core Data: \(error)")
-//                        }
-                        
-                        // Reset states
-                        selectedShoppingItem = nil
-                        selectedStore = nil
-                    }
-                }) {
-                    UnifiedStoreSelectionView(isPresented: $showStoreSelectionSheet,
-                                              selectedStoreFilter: $selectedStoreFilter,
-                                              storeName: $storeName,
-                                              storeAddress: $storeAddress,
-                                              selectedStore: $selectedStore,
-                                              latitude: $latitude,
-                                              longitude: $longitude,
-                                              isPreferred: $isPreferred
-                    )
-                }
-                .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
-                    // Request a refresh when any sheet is dismissed, with a simpler approach
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        // Use a single refresh call instead of multiple redundant ones
-                        self.refreshDataAndViews()
-                        
-                        // Check if the edited item now has a store assigned
-                        self.handleStoreAssignment()
-                    }
-                    
-                    // Reset all sheet-related states when dismissed
-                    showAddShoppingItem = false
-                    showAddTodoItem = false
-                    showSettings = false
-                    isShowingAnySheet = false
-                }) {
-                    CustomSheetView(
-                        showAddShoppingItem: $showAddShoppingItem,
-                        showAddTodoItem: $showAddTodoItem,
-                        selectedShoppingItem: $selectedShoppingItem,
-                        selectedToDoItem: $selectedToDoItem,
-                        navigateToEditableList: $navigateToEditableList,
-                        isShowingAnySheet: $isShowingAnySheet
-                    )
-                    .environmentObject(todoListViewModel)
-                    .environmentObject(shoppingListViewModel)
-                }
-                .sheet(isPresented: $showSettings) {
-                    NavigationView {
-                        SettingsView()
-                            .environmentObject(subscriptionsManager)
-                    }
-                }
-                .onChange(of: appDelegate.isAdReady) {
-                    appDelegate.handleAdChange(appDelegate.isAdReady)
-                }
-                .onAppear {
-                    observeChanges()
-                    
-                    // Force refresh data when view appears, but with slight delay to avoid race conditions
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.refreshDataAndViews()
-                    }
-                    
-                    MobileAds.shared.start(completionHandler: nil)
-                    
-                    for item in shoppingListViewModel.shoppingItems {
-                        if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
-                            let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                            locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-                            
-                          //  locationManager.regionIDToItemMap[uid] = item
-                        }
-                    }
-                }
-                .onDisappear {
-                    print("♻️ Cleaned up resources in EditableListView")
                 }
             }
+            .background(Color(.systemBackground))
+            .navigationTitle("")
+            .fullScreenCover(isPresented: Binding(
+                get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
+                set: { isScanning = $0 }
+            )) {
+                BarcodeScannerView { barcode in
+                    isScanning = false
+                    barcodeScannerViewModel.fetchProductDetails(barcode: barcode, completion: { item in
+                        if let item = item {
+                            scannedItem = item
+                            
+                            Task {
+                                var location: CLLocation?
+                                if let userCoordinate = self.userLocation {
+                                    location = CLLocation(latitude: userCoordinate.latitude, longitude: userCoordinate.longitude)
+                                }
+                                
+                                await locationManager.searchNearbyStores()
+                                
+                                await MainActor.run {
+                                    mkMapItems = locationManager.stores
+                                    showStoreSelectionSheet = true
+                                }
+                            }
+                        } else {
+                            showErrorMessage = "❌ Product not found."
+                        }
+                    })
+                }
+            }
+            .sheet(isPresented: $showStoreSelectionSheet, onDismiss: {
+                // In sheet onDismiss handler after updating the item and before calling the grouping function
+                if shoppingListViewModel.emojiMap.isEmpty {
+                    shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
+                }
+                
+                if let item = selectedShoppingItem, let store = selectedStore {
+                    // Update the item with store information
+                    item.storeName = storeName
+                    item.storeAddress = storeAddress
+                    
+                    if let latitude = latitude, let longitude = longitude {
+                        item.latitude = latitude
+                        item.longitude = longitude
+                    }
+                    
+                    if let item = selectedShoppingItem {
+                        // Ensure emoji is set when assigning a store
+                        if item.emoji == nil || item.emoji?.isEmpty == true {
+                            // Make sure emoji map is loaded
+                            if shoppingListViewModel.emojiMap.isEmpty {
+                                shoppingListViewModel.emojiMap = shoppingListViewModel.loadEmojiMap()
+                            }
+                            
+                            // Set emoji based on item name
+                            let emoji = shoppingListViewModel.emojiForItemName(item.name ?? "")
+                            item.emoji = emoji
+                        }
+                    }
+                    
+                    // Save to Core Data
+                    //                        do {
+                    //                            try viewContext.save()
+                    //                            print("💾 Successfully saved to Core Data")
+                    //
+                    //                            DispatchQueue.main.async {
+                    //                                // First, fetch fresh data from Core Data
+                    //                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
+                    //                                if let items = try? viewContext.fetch(request) {
+                    //                                    // Update the view model's data
+                    //                                    shoppingListViewModel.shoppingItems = items
+                    //
+                    //                                    // Clear and rebuild the groupings
+                    //                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
+                    //                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
+                    //
+                    //                                    // Force view refresh
+                    //                                    refreshTrigger = UUID()
+                    //                                }
+                    //                            }
+                    //                        } catch {
+                    //                            print("❌ Error saving to Core Data: \(error)")
+                    //                        }
+                    
+                    // Reset states
+                    selectedShoppingItem = nil
+                    selectedStore = nil
+                }
+            }) {
+                UnifiedStoreSelectionView(isPresented: $showStoreSelectionSheet,
+                                          selectedStoreFilter: $selectedStoreFilter,
+                                          storeName: $storeName,
+                                          storeAddress: $storeAddress,
+                                          selectedStore: $selectedStore,
+                                          latitude: $latitude,
+                                          longitude: $longitude,
+                                          isPreferred: $isPreferred
+                )
+            }
+            .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
+                // Request a refresh when any sheet is dismissed, with a simpler approach
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    // Use a single refresh call instead of multiple redundant ones
+                    self.refreshDataAndViews()
+                    
+                    // Check if the edited item now has a store assigned
+                    self.handleStoreAssignment()
+                }
+                
+                // Reset all sheet-related states when dismissed
+                showAddShoppingItem = false
+                showAddTodoItem = false
+                showSettings = false
+                isShowingAnySheet = false
+            }) {
+                CustomSheetView(
+                    showAddShoppingItem: $showAddShoppingItem,
+                    showAddTodoItem: $showAddTodoItem,
+                    selectedShoppingItem: $selectedShoppingItem,
+                    selectedToDoItem: $selectedToDoItem,
+                    navigateToEditableList: $navigateToEditableList,
+                    isShowingAnySheet: $isShowingAnySheet
+                )
+                .environmentObject(todoListViewModel)
+                .environmentObject(shoppingListViewModel)
+            }
+            .sheet(isPresented: $showSettings) {
+                NavigationView {
+                    SettingsView()
+                        .environmentObject(subscriptionsManager)
+                }
+            }
+            .onChange(of: appDelegate.isAdReady) {
+                appDelegate.handleAdChange(appDelegate.isAdReady)
+            }
+            .onAppear {
+                observeChanges()
+                
+                // Force refresh data when view appears, but with slight delay to avoid race conditions
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.refreshDataAndViews()
+                }
+                
+                //   MobileAds.shared.start(completionHandler: nil)
+                
+                for item in shoppingListViewModel.shoppingItems {
+                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
+                        let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
+                        
+                        //  locationManager.regionIDToItemMap[uid] = item
+                    }
+                }
+            }
+            .onDisappear {
+                print("♻️ Cleaned up resources in EditableListView")
+            }
+        }
+        .sheet(isPresented: $taskBeaconRewardsIsShowing, onDismiss: {
+            showAd = false
+            isAdReady = false
+            appDelegate.adManager.cancelAd()
+        }) {
+            RewardedAdSection(
+                showAd: $appDelegate.showAd,
+                isAdReady: $appDelegate.isAdReady,
+                taskBeaconRewardsIsShowing: $taskBeaconRewardsIsShowing,
+                adManager: appDelegate.adManager
+            )
+            .presentationDetents([.height(250)])
         }
         .onAppear {
+            startAdCheckTimer()
             setupOnAppear()
+        }
+        .onDisappear {
+            adCheckTimer?.invalidate()
+            adCheckTimer = nil
+            print("♻️ Cleaned up resources in EditableListView")
         }
         .alert(permissionManager.permissionAlertTitle, isPresented: $permissionManager.showPermissionAlert) {
             Button("Open Settings") {
@@ -877,6 +911,29 @@ struct EditableListView: View {
             Button(Constants.cancel, role: .cancel) {}
         } message: {
             Text(permissionManager.permissionAlertMessage)
+        }
+
+    }
+    
+    private func startAdCheckTimer() {
+        // Cancel any existing timer
+        adCheckTimer?.invalidate()
+        
+        // Create a new timer that fires every 2 seconds
+        adCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+            // First check if ad was cancelled
+            if appDelegate.adManager.isCancelled {
+                print("❌ Ad check timer: Ad was cancelled, not showing rewards section")
+                return
+            }
+            
+            // Then check other conditions
+            if shouldShowRewardedAdSection && !taskBeaconRewardsIsShowing {
+                if appDelegate.adManager.canShowRewardsSection() {
+                    print("✅ Ad check timer: Showing rewards section")
+                    taskBeaconRewardsIsShowing = true
+                }
+            }
         }
     }
     
@@ -1238,11 +1295,10 @@ struct EditableListView: View {
             print("🏠 App moved to background")
             showAd = false
         } else if phase == .active {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                print("🔔 App is active, checking if ad is ready")
-                if isAdReady {
-                    print("✅ Ad is ready, but will not auto-run")
-                }
+            // Remove the 2-second delay and check immediately
+            print("🔔 App is active, checking if ad is ready")
+            if isAdReady {
+                print("✅ Ad is ready, but will not auto-run")
             }
         }
     }

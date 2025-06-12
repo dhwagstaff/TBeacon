@@ -20,9 +20,13 @@ struct SettingsView: View {
     @AppStorage("distanceUnit") private var distanceUnit: String = "meters"
 
     @StateObject private var permissionManager = PermissionManager.shared
-    
+    @StateObject private var appDelegate = AppDelegate.shared
+
     @State private var locationStatus: CLAuthorizationStatus = .notDetermined
-    
+    @State private var formErrorDescription: String = ""
+    @State private var showPrivacyOptionsAlert: Bool = false
+    @State private var isPrivacyOptionsButtonDisabled: Bool = false
+
     var radiusDisplay: String {
         let radiusMeters = UserDefaults.standard.double(forKey: "geofenceRadius")
         if distanceUnit == "miles" {
@@ -134,6 +138,44 @@ struct SettingsView: View {
                             notificationStatusView
                         }
                     }
+                }
+                
+                Section(header: Text("Privacy")) {
+                    Button("Privacy Settings") {
+                        Task {
+                            do {
+                                try await GoogleMobileAdsConsentManager.shared.presentPrivacyOptionsForm()
+                                // Update button state after presenting form
+                                isPrivacyOptionsButtonDisabled = !GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+                            } catch {
+                                formErrorDescription = error.localizedDescription
+                                showPrivacyOptionsAlert = true
+                            }
+                        }
+                    }
+                    .disabled(isPrivacyOptionsButtonDisabled)
+                    
+                    // Add consent status indicator
+                    if !appDelegate.canRequestAds {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.yellow)
+                            Text("Ad consent required")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .onAppear {
+                    // Existing permission status updates
+                    locationStatus = LocationManager.shared.authorizationStatus
+                    
+                    // Update privacy button state
+                    isPrivacyOptionsButtonDisabled = !GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+                }
+                .alert("Privacy Options Error", isPresented: $showPrivacyOptionsAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text(formErrorDescription)
                 }
                 
                 Section(header: Text("Distance Units")) {

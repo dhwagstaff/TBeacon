@@ -32,12 +32,19 @@ struct BannerAdView: UIViewRepresentable {
         print("🟦 Initializing BannerAdView...")
 
         let container = UIView()
-        container.backgroundColor = .systemBackground  // ✅ Supports light/dark mode
+        container.backgroundColor = .systemBackground
+
+        guard let rootVC = getRootViewController() else {
+            print("❌ Failed to get root view controller")
+            return container
+        }
 
         let bannerView = BannerView(adSize: AdSizeMediumRectangle)
         bannerView.adUnitID = testBannerAdUnitID
-        bannerView.rootViewController = getRootViewController()
+        bannerView.rootViewController = rootVC
         bannerView.delegate = context.coordinator
+        
+        // Add loading state handling
         bannerView.load(Request())
 
         bannerView.translatesAutoresizingMaskIntoConstraints = false
@@ -45,7 +52,9 @@ struct BannerAdView: UIViewRepresentable {
 
         NSLayoutConstraint.activate([
             bannerView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            bannerView.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+            bannerView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            bannerView.widthAnchor.constraint(equalToConstant: 300),  // Standard medium rectangle width
+            bannerView.heightAnchor.constraint(equalToConstant: 250)  // Standard medium rectangle height
         ])
 
         return container
@@ -54,9 +63,13 @@ struct BannerAdView: UIViewRepresentable {
     func updateUIView(_ uiView: UIView, context: Context) {}
 
     private func getRootViewController() -> UIViewController? {
-        UIApplication.shared.connectedScenes
-            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }
-            .first
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootVC = window.rootViewController else {
+            print("❌ Failed to get root view controller")
+            return nil
+        }
+        return rootVC
     }
 }
 

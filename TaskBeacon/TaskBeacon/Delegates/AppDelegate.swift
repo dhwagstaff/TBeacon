@@ -17,11 +17,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
     
     @Published var isAdReady: Bool = false
     @Published var showAd: Bool = false
-    
+    @Published var isPrivacyOptionsRequired: Bool = false
+    @Published var canRequestAds: Bool = false
+
     // Entitlement management
     let entitlementManager = EntitlementManager()
 
     private var hasInitializedLocationManager = false
+    private var isConsentGathered = false
 
     var window: UIWindow?
     
@@ -84,33 +87,144 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         }
 
         clearNotifications(application)
-        initializeLocationManager()
         
         print("🚀 Initializing Google Mobile Ads SDK...")
         
-        // Start Google Mobile Ads SDK with a slight delay
-        // Initialize Google Mobile Ads SDK
-        MobileAds.shared.start { status in
-            print("📱 Google Mobile Ads SDK initialization status: \(status)")
-            
-            if status.adapterStatusesByClassName.count > 0 {
-                print("✅ Google Mobile Ads SDK initialized successfully")
-                // Start loading first ad
-                self.loadInitialAd()
-            } else {
-                print("❌ Google Mobile Ads SDK initialization failed")
-            }
+        // Delay consent gathering to ensure window is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.gatherConsentAndInitializeSDK()
         }
         
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-//            MobileAds.shared.start(completionHandler: nil)
-//        }
-
         // Request notification permission
         NotificationDelegate.shared.requestNotificationPermission()
 
         return true
     }
+    
+    
+    private func gatherConsentAndInitializeSDK() {
+        print("🔄 Gathering consent...")
+        isConsentGathered = false
+        
+        // Ensure we have a window and root view controller before proceeding
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            print("❌ No window or root view controller available for consent gathering")
+            return
+        }
+        
+        GoogleMobileAdsConsentManager.shared.gatherConsent { [weak self] consentError in
+            guard let self = self else { return }
+            
+            if let consentError {
+                print("❌ Consent gathering failed: \(consentError.localizedDescription)")
+                return
+            }
+            
+            // Update consent status
+            DispatchQueue.main.async {
+                self.isPrivacyOptionsRequired = GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+                self.canRequestAds = GoogleMobileAdsConsentManager.shared.canRequestAds
+                
+                print("📊 Consent Status - canRequestAds: \(self.canRequestAds), isPrivacyOptionsRequired: \(self.isPrivacyOptionsRequired)")
+                
+                // Only initialize SDK after consent is gathered
+                if self.canRequestAds {
+                    print("✅ Consent granted, initializing SDK...")
+                    GoogleMobileAdsConsentManager.shared.startGoogleMobileAdsSDK()
+                    
+                    // SDK is now initialized, proceed with ad loading
+                    self.isConsentGathered = true
+                    self.loadInitialAd()
+                } else {
+                    print("⚠️ Cannot request ads due to consent status")
+                }
+            }
+        }
+    }
+    
+//    private func gatherConsentAndInitializeSDK() {
+//        print("🔄 Gathering consent...")
+//        isConsentGathered = false
+//        
+//        // Ensure we have a window and root view controller before proceeding
+//        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+//              let window = windowScene.windows.first,
+//              let rootViewController = window.rootViewController else {
+//            print("❌ No window or root view controller available for consent gathering")
+//            
+////            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+////                self?.gatherConsentAndInitializeSDK()
+////            }
+//            
+//            return
+//        }
+//        
+//        GoogleMobileAdsConsentManager.shared.gatherConsent { [weak self] consentError in
+//            guard let self = self else { return }
+//            
+//            if let consentError {
+//                print("❌ Consent gathering failed: \(consentError.localizedDescription)")
+//                return
+//            }
+//            
+//            // Update consent status
+//            DispatchQueue.main.async {
+//                self.isPrivacyOptionsRequired = GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+//                self.canRequestAds = GoogleMobileAdsConsentManager.shared.canRequestAds
+//                
+//                print("📊 Consent Status - canRequestAds: \(self.canRequestAds), isPrivacyOptionsRequired: \(self.isPrivacyOptionsRequired)")
+//                
+//                // Only initialize SDK after consent is gathered
+//                if self.canRequestAds {
+//                    print("✅ Consent granted, initializing SDK...")
+//                    GoogleMobileAdsConsentManager.shared.startGoogleMobileAdsSDK()
+//                    
+//                    // SDK is now initialized, proceed with ad loading
+//                    self.isConsentGathered = true
+//                    
+//                    // Update AdManager's consent status
+//                    Task { @MainActor in
+//                        await self.adManager.updateConsentStatus()
+//                    }
+//                    
+//                    self.loadInitialAd()
+//                } else {
+//                    print("⚠️ Cannot request ads due to consent status")
+//                }
+//            }
+//        }
+//    }
+    
+//    private func gatherConsentAndInitializeSDK() {
+//        print("🔄 Gathering consent...")
+//        isConsentGathered = false
+//        
+//        // Ensure we have a window and root view controller before proceeding
+//        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+//              let window = windowScene.windows.first,
+//              let rootViewController = window.rootViewController else {
+//            print("❌ No window or root view controller available for consent gathering")
+//            return
+//        }
+//        
+//        GoogleMobileAdsConsentManager.shared.gatherConsent(from: self) { [weak self] consentError in
+//          guard let self else { return }
+//
+//          if let consentError {
+//            // Consent gathering failed.
+//            print("Error: \(consentError.localizedDescription)")
+//          }
+//
+//          if GoogleMobileAdsConsentManager.shared.canRequestAds {
+//            self.startGoogleMobileAdsSDK()
+//          }
+//
+//          self.privacySettingsButton.isEnabled =
+//            GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+//        }
+//    }
     
     func applicationDidBecomeActive(_ application: UIApplication) {
         if let lastRefresh = UserDefaults.standard.object(forKey: "lastGeofenceRefresh") as? Date,
@@ -119,6 +233,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         }
         
         print("📲 App became active. Refreshing geofences.")
+        
+        // Revalidate consent when app becomes active
+        if !isConsentGathered {
+            print("🔄 Revalidating consent status...")
+            gatherConsentAndInitializeSDK()
+        }
         
         let context = PersistenceController.shared.container.viewContext
         var items: [NSManagedObject] = []
@@ -147,12 +267,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
     }
     
     // Function to load initial ad
-    private func loadInitialAd() {
+    func loadInitialAd() {
         // Only load ad if user is not premium
-        if !entitlementManager.isPremiumUser {
+        if !entitlementManager.isPremiumUser && canRequestAds {
             print("⏳ Loading initial ad for non-premium user")
-            // Ad loading logic would go here
-            // This would be similar to the RewardedAdSection implementation
+            DispatchQueue.main.async {
+                self.adManager.canRequestAds = self.canRequestAds
+                self.adManager.isPrivacyOptionsRequired = self.isPrivacyOptionsRequired
+
+                self.isAdReady = true
+                self.adManager.isAdReady = true
+                
+                print("app delegate 📊 AdManager consent status updated - canRequestAds: \(self.adManager.canRequestAds)")
+            }
         }
     }
     

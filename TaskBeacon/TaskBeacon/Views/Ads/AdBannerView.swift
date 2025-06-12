@@ -9,14 +9,18 @@ import SwiftUI
 
 struct AdBannerView: View {
     @EnvironmentObject var subscriptionsManager: SubscriptionsManager
+    @State private var isAdLoaded = false
 
     var body: some View {
         if !subscriptionsManager.hasRemovedAds {
             VStack(spacing: 0) {
-                BannerAdView() // ✅ Use actual ad view
-                    .frame(height: 250) // Match AdSizeMediumRectangle
-                    .background(Color(.systemBackground)) // ✅ Adapts to dark/light mode
+                BannerAdView()
+                    .frame(height: 250)
+                    .background(Color(.systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 0))
+                    .onAppear {
+                        print("🟦 AdBannerView appeared")
+                    }
             }
             .frame(maxWidth: .infinity)
             .transition(.opacity)
