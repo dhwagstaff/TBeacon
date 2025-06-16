@@ -43,13 +43,13 @@ class ShoppingListViewModel: ListsViewModel {
         }
     }
     
-    init(context: NSManagedObjectContext) {
+    init(context: NSManagedObjectContext, isEditingExistingItem: Bool = false) {
         self.viewContext = context
         
         self.locationManager = LocationManager.shared
         
-        super.init()
-        
+        super.init(isEditingExistingItem: isEditingExistingItem)
+                        
         // ✅ Fetch ToDoItem and ShoppingItem from Core Data
         let todoRequest = ToDoItemEntity.fetchRequest()
         let shoppingRequest = ShoppingItemEntity.fetchRequest()
@@ -695,77 +695,144 @@ class ShoppingListViewModel: ListsViewModel {
                           expirationDate: Date,
                           selectedCategoryEmoji: String,
                           isPreferred: Bool) async {
-        do {
-            // Check if this is a store assignment
-            let isStoreAssignment = !storeName.isEmpty
+        var itemToSave: ShoppingItemEntity!
+        
+        // All Core Data operations need to happen on the main thread
+        Task {
+            if let existingItem = shoppingItem {
+                // Editing existing item
+                itemToSave = existingItem
+            } else {
+                // Creating a new item
+                itemToSave = ShoppingItemEntity(context: viewContext)
+                itemToSave.id = UUID()
+                itemToSave.uid = itemToSave.id?.uuidString
+            }
             
-            // CRITICAL: All Core Data operations need to happen on the main thread
-            await MainActor.run {
-                do {
-                    let itemToSave: ShoppingItemEntity
-                    
-                    if let existingItem = shoppingItem {
-                        // Editing existing item
-                        itemToSave = existingItem
-                    } else {
-                        // Creating a new item
-                        itemToSave = ShoppingItemEntity(context: viewContext)
-                        itemToSave.id = UUID()
-                        itemToSave.uid = itemToSave.id?.uuidString
-                    }
-                    
-                    // Update item properties
-                    itemToSave.name = name
-                    itemToSave.category = selectedCategory
-                    itemToSave.storeName = storeName.isEmpty ? nil : storeName
-                    itemToSave.storeAddress = storeAddress.isEmpty ? nil : storeAddress
-                    
-                    if let lat = latitude, let long = longitude {
-                        itemToSave.latitude = lat
-                        itemToSave.longitude = long
-                    }
-                    
-                    if Constants.perishableCategories.contains(selectedCategory) {
-                        itemToSave.expirationDate = expirationDate
-                    } else {
-                        itemToSave.expirationDate = nil
-                    }
-                    
-                    itemToSave.lastUpdated = Date()
-                    
-                    // Set emoji if not already set
-                    if itemToSave.emoji == nil || itemToSave.emoji?.isEmpty == true {
-                        // Make sure emoji map is loaded
-                        if emojiMap.isEmpty {
-                            emojiMap = loadEmojiMap()
-                        }
-                        
-                        // Get emoji from name or category
-                        let emojiFromName = emojiForItemName(itemToSave.name ?? "")
-                        itemToSave.emoji = emojiFromName
-                        itemToSave.categoryEmoji = selectedCategoryEmoji
-                    }
-                    
-                    // Now save the context
-                    try viewContext.save()
-                                        
-                    // Update grouping without triggering more fetches
-                    updateGroupedItemsInternal()
-                    
-                    if let uid = itemToSave.uid {
-                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid, item: itemToSave)
-                        
-                      //  locationManager.regionIDToItemMap[uid] = itemToSave
-                    }
-                    
-                    // Update view model state directly
-                    objectWillChange.send()
-                } catch {
-                    print("❌ Error saving to Core Data on main thread: \(error.localizedDescription)")
+            // Update item properties
+            itemToSave.name = name
+            itemToSave.category = selectedCategory
+            itemToSave.storeName = storeName.isEmpty ? nil : storeName
+            itemToSave.storeAddress = storeAddress.isEmpty ? nil : storeAddress
+            
+            if let lat = latitude, let long = longitude {
+                itemToSave.latitude = lat
+                itemToSave.longitude = long
+            }
+            
+            if Constants.perishableCategories.contains(selectedCategory) {
+                itemToSave.expirationDate = expirationDate
+            } else {
+                itemToSave.expirationDate = nil
+            }
+            
+            itemToSave.lastUpdated = Date()
+            
+            // Set emoji if not already set
+            if itemToSave.emoji == nil || itemToSave.emoji?.isEmpty == true {
+                if emojiMap.isEmpty {
+                    emojiMap = loadEmojiMap()
                 }
+                let emojiFromName = emojiForItemName(itemToSave.name ?? "")
+                itemToSave.emoji = emojiFromName
+                itemToSave.categoryEmoji = selectedCategoryEmoji
+            }
+            
+            // Instead of saving and updating here, call the centralized function:
+            await saveShoppingItemToCoreData(item: itemToSave)
+            
+            // Monitor region if needed
+            if let uid = itemToSave.uid {
+                locationManager.monitorRegionAtLocation(
+                    center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude),
+                    identifier: uid,
+                    item: itemToSave
+                )
             }
         }
     }
+    
+//    func saveShoppingItem(storeName: String,
+//                          shoppingItem: ShoppingItemEntity?,
+//                          name: String,
+//                          selectedCategory: String,
+//                          storeAddress: String,
+//                          latitude: Double?,
+//                          longitude: Double?,
+//                          expirationDate: Date,
+//                          selectedCategoryEmoji: String,
+//                          isPreferred: Bool) async {
+//        do {
+//            // Check if this is a store assignment
+//            let isStoreAssignment = !storeName.isEmpty
+//            
+//            // CRITICAL: All Core Data operations need to happen on the main thread
+//            await MainActor.run {
+//                do {
+//                    let itemToSave: ShoppingItemEntity
+//                    
+//                    if let existingItem = shoppingItem {
+//                        // Editing existing item
+//                        itemToSave = existingItem
+//                    } else {
+//                        // Creating a new item
+//                        itemToSave = ShoppingItemEntity(context: viewContext)
+//                        itemToSave.id = UUID()
+//                        itemToSave.uid = itemToSave.id?.uuidString
+//                    }
+//                    
+//                    // Update item properties
+//                    itemToSave.name = name
+//                    itemToSave.category = selectedCategory
+//                    itemToSave.storeName = storeName.isEmpty ? nil : storeName
+//                    itemToSave.storeAddress = storeAddress.isEmpty ? nil : storeAddress
+//                    
+//                    if let lat = latitude, let long = longitude {
+//                        itemToSave.latitude = lat
+//                        itemToSave.longitude = long
+//                    }
+//                    
+//                    if Constants.perishableCategories.contains(selectedCategory) {
+//                        itemToSave.expirationDate = expirationDate
+//                    } else {
+//                        itemToSave.expirationDate = nil
+//                    }
+//                    
+//                    itemToSave.lastUpdated = Date()
+//                    
+//                    // Set emoji if not already set
+//                    if itemToSave.emoji == nil || itemToSave.emoji?.isEmpty == true {
+//                        // Make sure emoji map is loaded
+//                        if emojiMap.isEmpty {
+//                            emojiMap = loadEmojiMap()
+//                        }
+//                        
+//                        // Get emoji from name or category
+//                        let emojiFromName = emojiForItemName(itemToSave.name ?? "")
+//                        itemToSave.emoji = emojiFromName
+//                        itemToSave.categoryEmoji = selectedCategoryEmoji
+//                    }
+//                    
+//                    // Now save the context
+//                    try viewContext.save()
+//                                        
+//                    // Update grouping without triggering more fetches
+//                    updateGroupedItemsInternal()
+//                    
+//                    if let uid = itemToSave.uid {
+//                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude), identifier: uid, item: itemToSave)
+//                        
+//                      //  locationManager.regionIDToItemMap[uid] = itemToSave
+//                    }
+//                    
+//                    // Update view model state directly
+//                    objectWillChange.send()
+//                } catch {
+//                    print("❌ Error saving to Core Data on main thread: \(error.localizedDescription)")
+//                }
+//            }
+//        }
+//    }
     
     func saveShoppingItemToCoreData(item: ShoppingItemEntity) async {
         do {

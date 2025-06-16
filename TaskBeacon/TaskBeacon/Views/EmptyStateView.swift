@@ -30,7 +30,7 @@ struct EmptyStateView: View {
     let icons = [
         (systemName: "cart", title: "Shopping List", color: Color(hex: "FFD300")),
         (systemName: "checklist", title: "To-Do List", color: Color(hex: "005D5D")),
-        (systemName: "mappin.and.ellipse", title: "Location-Based Reminders", color: Color(hex: "FF7400"))
+        (systemName: "mappin.and.ellipse", title: "Location-Based Reminders", color: Color(hex: "1240AB"))
     ]
 
     var body: some View {
@@ -100,7 +100,6 @@ struct EmptyStateView: View {
                             }) {
                                 buttonLabel(icon: ImageSymbolNames.cartFill, title: "Create Your First Shopping List")
                             }
-//                            .background(Color.accentColor)
                             .background(Color(hex: "FFD300"))
                             .cornerRadius(10)
                             .padding([.leading, .trailing], 10)
@@ -111,7 +110,6 @@ struct EmptyStateView: View {
                             }) {
                                 buttonLabel(icon: "list.bullet", title: "Create Your First To-Do List")
                             }
-//                            .background(Color.green)
                             .background(Color(hex: "005D5D"))
                             .cornerRadius(10)
                             .padding([.leading, .trailing, .bottom], 10)
@@ -177,6 +175,7 @@ struct EmptyStateView: View {
                         navigateToEditableList: $navigateToEditableList,
                         showAddShoppingItem: $showAddShoppingItem,
                         isShowingAnySheet: $isShowingAnySheet,
+                        isEditingExistingItem: false,
                         shoppingItem: scannedItem
                     )
                 }
@@ -186,7 +185,8 @@ struct EmptyStateView: View {
                     AddEditToDoItemView(toDoItem: nil,
                                         showAddTodoItem: $showAddTodoItem,
                                         isShowingAnySheet: $isShowingAnySheet,
-                                        navigateToEditableList: $navigateToEditableList)
+                                        navigateToEditableList: $navigateToEditableList,
+                                        isEditingExistingItem: false)
                 }
             }
         }
@@ -220,17 +220,17 @@ struct EmptyStateView: View {
     }
 }
 
-struct EmptyStateView_Previews: PreviewProvider {
-    static var previews: some View {
-        EmptyStateView()
-            .environmentObject(ShoppingListViewModel(context: PersistenceController.shared.container.viewContext))
-            .previewDevice(PreviewDevice(rawValue: "iPhone 11 Pro Max"))
-            .previewDisplayName("iPhone 11 Pro Max")
-
-        EmptyStateView()
-            .environmentObject(ShoppingListViewModel(context: PersistenceController.shared.container.viewContext))
-            .previewDevice(PreviewDevice(rawValue: "iPhone 13 mini"))
-            .previewDisplayName("iPhone 13 mini")
-
-    }
-}
+//struct EmptyStateView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        EmptyStateView()
+//            .environmentObject(ShoppingListViewModel(context: PersistenceController.shared.container.viewContext))
+//            .previewDevice(PreviewDevice(rawValue: "iPhone 11 Pro Max"))
+//            .previewDisplayName("iPhone 11 Pro Max")
+//
+//        EmptyStateView()
+//            .environmentObject(ShoppingListViewModel(context: PersistenceController.shared.container.viewContext))
+//            .previewDevice(PreviewDevice(rawValue: "iPhone 13 mini"))
+//            .previewDisplayName("iPhone 13 mini")
+//
+//    }
+//}

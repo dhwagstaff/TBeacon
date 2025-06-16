@@ -41,10 +41,13 @@ struct AddEditToDoItemView: View {
     @State private var locationSelectedFromSearch = false
     @State private var selectedLocation: CLLocationCoordinate2D?
     @State private var selectedPlacemark: MKPlacemark?
+    @State private var isShowingRewardedAd = false
     
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
     @Binding var navigateToEditableList: Bool
+    
+    let isEditingExistingItem: Bool
     
     private var storeNameBinding: Binding<String> {
         Binding(
@@ -60,18 +63,13 @@ struct AddEditToDoItemView: View {
         )
     }
     
-    // In AddEditToDoItemView.swift
-    private var isOverFreeLimit: Bool {
-        FreeLimitChecker.isOverFreeLimit(
-            isPremiumUser: entitlementManager.isPremiumUser,
-            isEditingExistingItem: toDoItem != nil
-        )
-    }
-
     init(toDoItem: ToDoItemEntity? = nil,
          showAddTodoItem: Binding<Bool>,
          isShowingAnySheet: Binding<Bool>,
-         navigateToEditableList: Binding<Bool>) {
+         navigateToEditableList: Binding<Bool>,
+         isEditingExistingItem: Bool) {
+        self.isEditingExistingItem = isEditingExistingItem
+
         // Initialize Entitlement and Subscription Managers
         let entitlementManager = EntitlementManager()
         let subscriptionsManager = SubscriptionsManager(entitlementManager: entitlementManager)
@@ -104,9 +102,10 @@ struct AddEditToDoItemView: View {
                     .edgesIgnoringSafeArea(.all)
 
                 Form {
-                    if isOverFreeLimit {
+                    if viewModel.isOverFreeLimit(isEditingExistingItem: isEditingExistingItem) {
                         Section {
-                            FreeUserLimitView(showSubscriptionSheet: $showSubscriptionSheet)
+                            FreeUserLimitView(showSubscriptionSheet: $showSubscriptionSheet,
+                                              showRewardedAd: $isShowingRewardedAd)
                         }
                         .padding(.vertical, 16)
                     }
@@ -181,6 +180,12 @@ struct AddEditToDoItemView: View {
                             }
                         }
                     }
+                }
+                .sheet(isPresented: $isShowingRewardedAd) {
+                    RewardedInterstitialContentView(
+                        isPresented: $isShowingRewardedAd,
+                        navigationTitle: "Task Beacon"
+                    )
                 }
                 .navigationTitle(toDoItem == nil ? "New To-Do Item" : "Edit To-Do Item")
                 .navigationBarItems(

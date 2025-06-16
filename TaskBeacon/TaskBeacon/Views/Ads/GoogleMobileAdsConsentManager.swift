@@ -27,8 +27,7 @@ import UserMessagingPlatform
 class GoogleMobileAdsConsentManager: NSObject {
     static let shared = GoogleMobileAdsConsentManager()
     
-    @Published var isMobileAdsStartCalled = false
-    
+    var isMobileAdsStartCalled = false
     
     var canRequestAds: Bool {
         return ConsentInformation.shared.canRequestAds
@@ -40,10 +39,7 @@ class GoogleMobileAdsConsentManager: NSObject {
     
     /// Helper method to call the UMP SDK methods to request consent information and load/present a
     /// consent form if necessary.
-    func gatherConsent(
-        from viewController: UIViewController? = nil,
-        consentGatheringComplete: @escaping (Error?) -> Void
-    ) {
+    func gatherConsent(consentGatheringComplete: @escaping (Error?) -> Void) {
         let parameters = RequestParameters()
         
         // For testing purposes, you can use UMPDebugGeography to simulate a location.
@@ -51,104 +47,60 @@ class GoogleMobileAdsConsentManager: NSObject {
         // debugSettings.geography = DebugGeography.EEA
         parameters.debugSettings = debugSettings
         
+        // [START request_consent_info_update]
         // Requesting an update to consent information should be called on every app launch.
-        ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) {
-            requestConsentError in
+        ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { [weak self] requestConsentError in
+            
+            guard let self = self else { return }
+            
+            // [START_EXCLUDE]
             guard requestConsentError == nil else {
+                print("❌ Consent info update failed: \(String(describing: requestConsentError?.localizedDescription))")
+                
                 return consentGatheringComplete(requestConsentError)
             }
             
-            Task {
+            Task { @MainActor in
                 do {
-                    try await ConsentForm.loadAndPresentIfRequired(from: viewController)
+                    // [START load_and_present_consent_form]
+                    try await ConsentForm.loadAndPresentIfRequired(from: nil)
+                    // [END load_and_present_consent_form]
+                    
+                    self.startGoogleMobileAdsSDK()
+                    
                     // Consent has been gathered.
                     consentGatheringComplete(nil)
                 } catch {
+                    print("❌ Error loading consent form: \(error.localizedDescription)")
+                    
                     consentGatheringComplete(error)
                 }
             }
+            // [END_EXCLUDE]
         }
+        // [END request_consent_info_update]
     }
     
     /// Helper method to call the UMP SDK method to present the privacy options form.
-    @MainActor func presentPrivacyOptionsForm(from viewController: UIViewController? = nil)
-    async throws
-    {
-        try await ConsentForm.presentPrivacyOptionsForm(from: viewController)
+    @MainActor func presentPrivacyOptionsForm() async throws {
+        do {
+            try await ConsentForm.presentPrivacyOptionsForm(from: nil)
+        } catch {
+            print("❌ Error presenting privacy options form: \(error.localizedDescription)")
+            throw error
+        }
     }
     
+    /// Method to initialize the Google Mobile Ads SDK. The SDK should only be initialized once.
     func startGoogleMobileAdsSDK() {
-        DispatchQueue.main.async {
-            guard !self.isMobileAdsStartCalled else { return }
-            
-            self.isMobileAdsStartCalled = true
-            
-            // Initialize the Google Mobile Ads SDK.
-            MobileAds.shared.start()
+        guard canRequestAds, !isMobileAdsStartCalled else { return }
+        
+        isMobileAdsStartCalled = true
+        print("🚀 Starting Google Mobile Ads SDK...")
+        
+        // Initialize the Google Mobile Ads SDK.
+        MobileAds.shared.start { status in
+            print("✅ Google Mobile Ads SDK initialized with status: \(status)")
         }
     }
 }
-//class GoogleMobileAdsConsentManager: NSObject {
-//  static let shared = GoogleMobileAdsConsentManager()
-//  var isMobileAdsStartCalled = false
-//
-//  var canRequestAds: Bool {
-//    return ConsentInformation.shared.canRequestAds
-//  }
-//
-//  var isPrivacyOptionsRequired: Bool {
-//    return ConsentInformation.shared.privacyOptionsRequirementStatus == .required
-//  }
-//
-//  /// Helper method to call the UMP SDK methods to request consent information and load/present a
-//  /// consent form if necessary.
-//  func gatherConsent(consentGatheringComplete: @escaping (Error?) -> Void) {
-//    let parameters = RequestParameters()
-//
-//    // For testing purposes, you can use UMPDebugGeography to simulate a location.
-//    let debugSettings = DebugSettings()
-//    // debugSettings.geography = DebugGeography.EEA
-//    parameters.debugSettings = debugSettings
-//
-//    // [START request_consent_info_update]
-//    // Requesting an update to consent information should be called on every app launch.
-//    ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) {
-//      requestConsentError in
-//      // [START_EXCLUDE]
-//      guard requestConsentError == nil else {
-//        return consentGatheringComplete(requestConsentError)
-//      }
-//
-//      Task { @MainActor in
-//        do {
-//          // [START load_and_present_consent_form]
-//          try await ConsentForm.loadAndPresentIfRequired(from: nil)
-//          // [END load_and_present_consent_form]
-//          // Consent has been gathered.
-//          consentGatheringComplete(nil)
-//        } catch {
-//          consentGatheringComplete(error)
-//        }
-//      }
-//      // [END_EXCLUDE]
-//    }
-//    // [END request_consent_info_update]
-//  }
-//
-//  /// Helper method to call the UMP SDK method to present the privacy options form.
-//  @MainActor func presentPrivacyOptionsForm() async throws {
-//    // [START present_privacy_options_form]
-//    try await ConsentForm.presentPrivacyOptionsForm(from: nil)
-//    // [END present_privacy_options_form]
-//  }
-//
-//  /// Method to initialize the Google Mobile Ads SDK. The SDK should only be initialized once.
-//  func startGoogleMobileAdsSDK() {
-//    guard canRequestAds, !isMobileAdsStartCalled else { return }
-//
-//    isMobileAdsStartCalled = true
-//
-//    // Initialize the Google Mobile Ads SDK.
-//    MobileAds.shared.start()
-//  }
-//}

@@ -80,8 +80,6 @@ struct EditableListView: View {
     @State private var groupedToDoItems: [String: [ToDoItemEntity]] = [:]
     @State private var refreshTrigger: UUID = UUID()
     @State private var showSettings = false
-    @State private var showAd = false
-    @State private var isAdReady = false  // ✅ Track when the ad is ready
     @State private var isScanning = false
     @State private var scannedBarcode: String?
     @State private var selectedProduct: Product?
@@ -120,6 +118,8 @@ struct EditableListView: View {
     @State private var taskBeaconRewardsIsShowing = false
     @State private var adCheckTimer: Timer?
     @State private var hasCancelledAd = false
+    @State private var isShowingRewardedAd = false
+    @State private var isShowingInterstitialAd = false
 
     private static var isRefreshing = false
     private var userLocationManager: CLLocationManager?
@@ -537,86 +537,8 @@ struct EditableListView: View {
                     itemTypePicker
                     if selectedSegment == "To-Do" {
                         HStack {
-                            Menu {
-                                Button(action: {
-                                    filterType = .none
-                                }) {
-                                    HStack {
-                                        Text("None")
-                                        if filterType == .none {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                                
-                                Button(action: {
-                                    filterType = .category
-                                }) {
-                                    HStack {
-                                        Text("Category")
-                                        if filterType == .category {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                                
-                                Menu {
-                                    Button(action: {
-                                        filterType = .priority
-                                        selectedPriority = .high
-                                    }) {
-                                        HStack {
-                                            Text("High")
-                                            if filterType == .priority && selectedPriority == .high {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                    
-                                    Button(action: {
-                                        filterType = .priority
-                                        selectedPriority = .medium
-                                    }) {
-                                        HStack {
-                                            Text("Medium")
-                                            if filterType == .priority && selectedPriority == .medium {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                    
-                                    Button(action: {
-                                        filterType = .priority
-                                        selectedPriority = .low
-                                    }) {
-                                        HStack {
-                                            Text("Low")
-                                            if filterType == .priority && selectedPriority == .low {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text("Priority")
-                                        if filterType == .priority {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            } label: {
-                                HStack {
-                                    Spacer()
-                                    
-                                    Image(systemName: "line.3.horizontal.decrease.circle")
-                                    Text(filterType == .category ? "Filter by Category" :
-                                            filterType == .priority ? "Filter by \(selectedPriority.title)" :
-                                            "Filter Options")
-                                }
-                                .foregroundColor(.blue)
-                                .padding(.horizontal)
-                            }
-                            
+                            FilterMenuView(filterType: $filterType, selectedPriority: $selectedPriority)
+                                                    
                             Spacer()
                         }
                         .padding(.vertical, 8)
@@ -630,23 +552,10 @@ struct EditableListView: View {
                 if isShowingLoadingOverlay {
                     LoadingOverlay()
                 }
-                
-                // Then, handle the RewardedInterstitialAdView separately
-                if shouldShowRewardedInterstitialAdView {
-                    RewardedInterstitialAdView(
-                        showAd: $appDelegate.showAd,
-                        isAdReady: $appDelegate.isAdReady,
-                        onRewardEarned: { amount, type in
-                            print("🎉 Reward Earned: \(amount) \(type)")
-                        },
-                        adManager: appDelegate.adManager
-                    )
-                }
             }
             .background(Color(.systemBackground))
             .navigationTitle("")
             .toolbar {
-                // ✅ Settings Button (Leading)
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showSettings.toggle() }) {
                         Image(systemName: "gearshape.fill")
@@ -655,12 +564,11 @@ struct EditableListView: View {
                     }
                 }
                 
-                // ✅ Barcode Scanner Button (Trailing)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack {
                         Button(action: {
                             Task {
-                                if await permissionManager.checkAndRequestPermission(for: .camera) {
+                                if await PermissionManager.shared.checkAndRequestPermission(for: .camera) {
                                     isScanning = true
                                 }
                             }
@@ -670,11 +578,10 @@ struct EditableListView: View {
                                 .foregroundColor(.blue)
                         }
                         
-                        // Add Button
                         Menu {
                             Button {
                                 selectedSegment = "Shopping"
-                                
+
                                 // Show loading overlay
                                 withAnimation(.easeIn(duration: 0.3)) {
                                     if locationManager.stores.isEmpty {
@@ -715,6 +622,12 @@ struct EditableListView: View {
             }
             .background(Color(.systemBackground))
             .navigationTitle("")
+            .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
+                appDelegate.adManager.lastAdTime = Date()
+                appDelegate.adManager.isShowingRewardedAd = false
+            }) {
+                RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Task Beacon")
+            }
             .fullScreenCover(isPresented: Binding(
                 get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
                 set: { isScanning = $0 }
@@ -846,8 +759,14 @@ struct EditableListView: View {
                         .environmentObject(subscriptionsManager)
                 }
             }
-            .onChange(of: appDelegate.isAdReady) {
-                appDelegate.handleAdChange(appDelegate.isAdReady)
+            .onChange(of: appDelegate.adManager.isAdReady) {
+                appDelegate.handleAdChange(appDelegate.adManager.isAdReady)
+            }
+            .onChange(of: shoppingListViewModel.shoppingItems) {
+                checkForRewardedAdTrigger()
+            }
+            .onChange(of: todoListViewModel.toDoItems) {
+                checkForRewardedAdTrigger()
             }
             .onAppear {
                 observeChanges()
@@ -856,15 +775,11 @@ struct EditableListView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.refreshDataAndViews()
                 }
-                
-                //   MobileAds.shared.start(completionHandler: nil)
-                
+                                
                 for item in shoppingListViewModel.shoppingItems {
                     if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
                         let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
                         locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-                        
-                        //  locationManager.regionIDToItemMap[uid] = item
                     }
                 }
             }
@@ -872,22 +787,12 @@ struct EditableListView: View {
                 print("♻️ Cleaned up resources in EditableListView")
             }
         }
-        .sheet(isPresented: $taskBeaconRewardsIsShowing, onDismiss: {
-            showAd = false
-            isAdReady = false
-            appDelegate.adManager.cancelAd()
-        }) {
-            RewardedAdSection(
-                showAd: $appDelegate.showAd,
-                isAdReady: $appDelegate.isAdReady,
-                taskBeaconRewardsIsShowing: $taskBeaconRewardsIsShowing,
-                adManager: appDelegate.adManager
-            )
-            .presentationDetents([.height(250)])
-        }
         .onAppear {
-            startAdCheckTimer()
             setupOnAppear()
+            
+            checkForRewardedAdTrigger()
+            
+            startInterstitialAdTimer()
         }
         .onDisappear {
             adCheckTimer?.invalidate()
@@ -912,28 +817,22 @@ struct EditableListView: View {
         } message: {
             Text(permissionManager.permissionAlertMessage)
         }
-
     }
     
-    private func startAdCheckTimer() {
-        // Cancel any existing timer
-        adCheckTimer?.invalidate()
-        
-        // Create a new timer that fires every 2 seconds
-        adCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-            // First check if ad was cancelled
-            if appDelegate.adManager.isCancelled {
-                print("❌ Ad check timer: Ad was cancelled, not showing rewards section")
-                return
+    func startInterstitialAdTimer() {
+        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+            if appDelegate.adManager.canShowInterstitialAd() && !isShowingRewardedAd {
+                appDelegate.adManager.showInterstitialAd()
+                appDelegate.adManager.lastInterstitialAdTime = Date()
             }
-            
-            // Then check other conditions
-            if shouldShowRewardedAdSection && !taskBeaconRewardsIsShowing {
-                if appDelegate.adManager.canShowRewardsSection() {
-                    print("✅ Ad check timer: Showing rewards section")
-                    taskBeaconRewardsIsShowing = true
-                }
-            }
+        }
+    }
+    
+    func checkForRewardedAdTrigger() {
+        if shoppingListViewModel.isOverFreeLimit() && appDelegate.adManager.canShowLimitExtensionReward() && !appDelegate.adManager.isShowingRewardedAd {
+            appDelegate.adManager.isShowingRewardedAd = true
+            isShowingRewardedAd = true
+            appDelegate.adManager.lastAdTime = Date()
         }
     }
     
@@ -1293,11 +1192,11 @@ struct EditableListView: View {
     private func handleSceneChange(_ phase: ScenePhase) {
         if phase == .background {
             print("🏠 App moved to background")
-            showAd = false
+            appDelegate.showAd = false
         } else if phase == .active {
             // Remove the 2-second delay and check immediately
             print("🔔 App is active, checking if ad is ready")
-            if isAdReady {
+            if appDelegate.adManager.isAdReady {
                 print("✅ Ad is ready, but will not auto-run")
             }
         }

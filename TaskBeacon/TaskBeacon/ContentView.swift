@@ -5,6 +5,7 @@
 //  Created by Dean Wagstaff on 2/5/25.
 //
 
+import AppTrackingTransparency
 import CoreData
 import StoreKit
 import SwiftUI
@@ -21,7 +22,7 @@ struct ContentView: View {
     @EnvironmentObject var subscriptionsManager: SubscriptionsManager
     
     @StateObject private var todoListViewModel = ToDoListViewModel(context: PersistenceController.shared.container.viewContext)
-
+    
     @State private var shoppingList: [String] = []
     @State private var todoList: [String] = []
     @State private var showSettings = false
@@ -32,13 +33,15 @@ struct ContentView: View {
     @State private var showFreeVersion: Bool = false
     @State private var forceRefresh = UUID() // 🔹 New State variable
     @State private var showSubscriptionScreen: Bool = false // Controls modal visibility
-
+    @State private var showPrivacyOptionsAlert = false
+    @State private var formErrorDescription: String?
+    
     private let features: [String] = ["Remove all ads", "Unlimited To-Do & Shopping Items"]
     
     @Binding var isAddingToDoItem: Bool
     @Binding var isAddingShoppingItem: Bool
     @Binding var isUpcomingToDoItems: Bool
-
+    
     @Environment(\.managedObjectContext) private var viewContext
     
     @FetchRequest(entity: ShoppingItemEntity.entity(), sortDescriptors: []) private var shoppingItems: FetchedResults<ShoppingItemEntity>
@@ -73,7 +76,7 @@ struct ContentView: View {
         do {
             let todos = try context.fetch(todoRequest)
             let shoppingItems = try context.fetch(shoppingRequest)
-           // let allItems = todos + shoppingItems
+            // let allItems = todos + shoppingItems
         } catch {
             print("❌ Failed to fetch items: \(error)")
         }
@@ -109,13 +112,15 @@ struct ContentView: View {
                                 AddEditToDoItemView(toDoItem: nil,
                                                     showAddTodoItem: .constant(true),
                                                     isShowingAnySheet: .constant(true),
-                                                    navigateToEditableList: .constant(false))
+                                                    navigateToEditableList: .constant(false),
+                                                    isEditingExistingItem: false)
                             }
                             .sheet(isPresented: $isAddingShoppingItem) {
                                 AddEditShoppingItemView(
                                     navigateToEditableList: .constant(false),
                                     showAddShoppingItem: .constant(true),
                                     isShowingAnySheet: .constant(false),
+                                    isEditingExistingItem: false,
                                     shoppingItem: nil
                                 )
                             }
@@ -148,6 +153,11 @@ struct ContentView: View {
                             }
                         }
                         .background(Color(.systemBackground))
+                        .alert(isPresented: $showPrivacyOptionsAlert) {
+                            Alert(title: Text(formErrorDescription ?? "Error"),
+                                    message: Text("Please try again later.")
+                            )
+                        }
                     )
                 }
             }
@@ -166,8 +176,11 @@ struct ContentView: View {
                 await subscriptionsManager.restorePurchases()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            ATTrackingManager.requestTrackingAuthorization(completionHandler: { status in })
+        }
     }
-
+    
     // 🔹 Function to Determine When to Show Subscription Screen
     private func checkSubscriptionStatus() {
         if !entitlementManager.isPremiumUser && !entitlementManager.hasChosenFreeVersion {

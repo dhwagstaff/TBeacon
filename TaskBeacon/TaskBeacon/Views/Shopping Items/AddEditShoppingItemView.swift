@@ -44,6 +44,7 @@ struct AddEditShoppingItemView: View {
     @State private var isPreferred = false
     @State private var selectedStoreFilter: String = Constants.allStores
     @State private var hasLoadedProducts = false
+    @State private var isShowingRewardedAd = false
     @State private var mapRegion: MKCoordinateRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -55,16 +56,8 @@ struct AddEditShoppingItemView: View {
     @Binding var isShowingAnySheet: Bool
     @Binding var navigateToEditableList: Bool
     
-    private let freeItemLimit = 5
+    let isEditingExistingItem: Bool
     
-    // In AddEditShoppingItemView.swift
-    private var isOverFreeLimit: Bool {
-        FreeLimitChecker.isOverFreeLimit(
-            isPremiumUser: entitlementManager.isPremiumUser,
-            isEditingExistingItem: shoppingItem != nil
-        )
-    }
-
     private var canSave: Bool {
         guard !name.isEmpty, !selectedCategory.isEmpty else { return false }
         return true
@@ -73,12 +66,16 @@ struct AddEditShoppingItemView: View {
     init(navigateToEditableList: Binding<Bool>,
          showAddShoppingItem: Binding<Bool>,
          isShowingAnySheet: Binding<Bool>,
+         isEditingExistingItem: Bool,
          shoppingItem: ShoppingItemEntity? = nil
     ) {
         // Initialize bindings
         self._navigateToEditableList = navigateToEditableList
         self._showAddShoppingItem = showAddShoppingItem
         self._isShowingAnySheet = isShowingAnySheet
+        
+        self.isEditingExistingItem = isEditingExistingItem
+        
         self._shoppingItem = State(initialValue: shoppingItem)
         
         // Initialize state with existing values if editing
@@ -116,9 +113,10 @@ struct AddEditShoppingItemView: View {
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 16) {
-                        if isOverFreeLimit {
+                        if viewModel.isOverFreeLimit(isEditingExistingItem: isEditingExistingItem) {
                             FreeUserLimitView(
-                                showSubscriptionSheet: $showSubscriptionSheet
+                                showSubscriptionSheet: $showSubscriptionSheet,
+                                showRewardedAd: $isShowingRewardedAd
                             )
                         }
 
@@ -154,6 +152,12 @@ struct AddEditShoppingItemView: View {
                                            isEditingText: $isEditingText,
                                            locationManager: locationManager)
                     }
+                    .sheet(isPresented: $isShowingRewardedAd) {
+                        RewardedInterstitialContentView(
+                            isPresented: $isShowingRewardedAd,
+                            navigationTitle: "Task Beacon"
+                        )
+                    }
                     .padding(.vertical, 16)
                 }
                 .scrollDismissesKeyboard(.immediately)
@@ -184,7 +188,7 @@ struct AddEditShoppingItemView: View {
                         dismissSheet()
                     }
                 }
-                .disabled(!canSave || isOverFreeLimit)
+                .disabled(!canSave || viewModel.isOverFreeLimit())
             )
             .onAppear {
                 setupOnAppear()
@@ -442,17 +446,17 @@ struct AddEditShoppingItemView: View {
     }
 }
 
-struct AddEditShoppingItemView_Previews: PreviewProvider {
-    static var previews: some View {
-        let navigateBinding = Binding.constant(false)
-        let showAddBinding = Binding.constant(false)
-        let isShowingAnySheetBinding = Binding.constant(false)
-        
-        return AddEditShoppingItemView(
-            navigateToEditableList: navigateBinding,
-            showAddShoppingItem: showAddBinding,
-            isShowingAnySheet: isShowingAnySheetBinding
-        )
-        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-    }
-}
+//struct AddEditShoppingItemView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        let navigateBinding = Binding.constant(false)
+//        let showAddBinding = Binding.constant(false)
+//        let isShowingAnySheetBinding = Binding.constant(false)
+//        
+//        return AddEditShoppingItemView(
+//            navigateToEditableList: navigateBinding,
+//            showAddShoppingItem: showAddBinding,
+//            isShowingAnySheet: isShowingAnySheetBinding
+//        )
+//        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+//    }
+//}

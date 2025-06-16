@@ -12,7 +12,29 @@ class ListsViewModel: NSObject, ObservableObject {
     @Published var activeCategories: [String: [String]] = [:]
     @Published var errorMessage: String = Constants.emptyString
     @Published var showErrorAlert = false
-    @Published var refreshTrigger = UUID() // Triggers list updates
+    @Published var refreshTrigger = UUID()
+    
+    var entitlementManager: EntitlementManager = EntitlementManager.shared
+    
+    let isEditingExistingItem: Bool
+    
+    init(isEditingExistingItem: Bool = false) {
+        self.isEditingExistingItem = isEditingExistingItem
+        super.init()
+    }
+    
+    func isOverFreeLimit(isEditingExistingItem: Bool = false) -> Bool {
+        FreeLimitChecker.isOverFreeLimit(
+            isPremiumUser: entitlementManager.isPremiumUser,
+            isEditingExistingItem: isEditingExistingItem)
+    }
+    
+    func tryShowInterstitialAdIfNeeded(isShowingRewardedAd: Bool) {
+        if AppDelegate.shared.adManager.canShowInterstitialAd() && !isShowingRewardedAd {
+            AppDelegate.shared.adManager.showInterstitialAd() // This should call the SDK's present method
+            AppDelegate.shared.adManager.lastInterstitialAdTime = Date()
+        }
+    }
     
     // Common functions
     func removeCategory(subcategory: String, department: String, categoryIsForToDoItems: Bool) {

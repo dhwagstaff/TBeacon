@@ -23,8 +23,8 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
     
     var captureSession: AVCaptureSession?
     
-    override init() {
-        super.init()
+    override init(isEditingExistingItem: Bool = false) {
+        super.init(isEditingExistingItem: isEditingExistingItem)
         
         locationManager.onLocationUpdate = { [weak self] coordinate in
             DispatchQueue.main.async {
@@ -177,7 +177,7 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                         try? context.save()
                     }
 
-                    let shoppingListViewModel = ShoppingListViewModel(context: context)
+                let shoppingListViewModel = ShoppingListViewModel(context: context, isEditingExistingItem: false)
                 
 //                Task {
 //                    await shoppingListViewModel.saveShoppingItemToCoreData(item: newItem)
@@ -323,7 +323,7 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                 newItem.productImage = UIImage(systemName: "storefront.circle.fill")?.pngData()
                 
                 do {
-                    let viewModel = ShoppingListViewModel(context: context)
+                    let viewModel = ShoppingListViewModel(context: context, isEditingExistingItem: false)
                     
 //                    Task {
 //                        await viewModel.saveShoppingItemToCoreData(item: newItem)

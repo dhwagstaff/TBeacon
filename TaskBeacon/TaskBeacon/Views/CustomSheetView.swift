@@ -26,7 +26,8 @@ struct CustomSheetView: View {
                 AddEditShoppingItemView(
                     navigateToEditableList: $navigateToEditableList,
                     showAddShoppingItem: $showAddShoppingItem,
-                    isShowingAnySheet: $isShowingAnySheet
+                    isShowingAnySheet: $isShowingAnySheet,
+                    isEditingExistingItem: false
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemBackground)) // ✅ adaptive
@@ -41,7 +42,8 @@ struct CustomSheetView: View {
                     toDoItem: selectedToDoItem,
                     showAddTodoItem: $showAddTodoItem,
                     isShowingAnySheet: $isShowingAnySheet,
-                    navigateToEditableList: $navigateToEditableList
+                    navigateToEditableList: $navigateToEditableList,
+                    isEditingExistingItem: selectedToDoItem != nil
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemBackground)) // ✅ adaptive
@@ -56,6 +58,7 @@ struct CustomSheetView: View {
                     navigateToEditableList: .constant(false),
                     showAddShoppingItem: $showAddShoppingItem,
                     isShowingAnySheet: $isShowingAnySheet,
+                    isEditingExistingItem: true,
                     shoppingItem: shoppingItem
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -75,7 +78,8 @@ struct CustomSheetView: View {
                     toDoItem: toDoItem,
                     showAddTodoItem: $showAddTodoItem,
                     isShowingAnySheet: $isShowingAnySheet,
-                    navigateToEditableList: .constant(false)
+                    navigateToEditableList: .constant(false),
+                    isEditingExistingItem: true
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemBackground)) // ✅ adaptive
@@ -134,119 +138,6 @@ struct CustomSheetView: View {
         isShowingAnySheet = false
     }
 }
-
-//struct CustomSheetView: View {
-//    @Binding var showAddShoppingItem: Bool
-//    @Binding var showAddTodoItem: Bool
-//    @Binding var selectedShoppingItem: ShoppingItem?
-//    @Binding var selectedToDoItem: ToDoItem?
-//    @Binding var navigateToEditableList: Bool
-//    @Binding var isShowingAnySheet: Bool
-//    
-//    @EnvironmentObject var dataUpdateManager: DataUpdateManager
-//    @EnvironmentObject var shoppingListViewModel: ShoppingListViewModel
-//    @EnvironmentObject var todoListViewModel: ToDoListViewModel
-//    
-//    var body: some View {
-//        ZStack {
-//            // ✅ Add Shopping Item Sheet
-//            if showAddShoppingItem {
-//                AddEditShoppingItemView(
-//                    navigateToEditableList: $navigateToEditableList,
-//                    showAddShoppingItem: $showAddShoppingItem,
-//                    isShowingAnySheet: $isShowingAnySheet
-//                )
-//                .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                .background(Color.white)
-//                .cornerRadius(16)
-//                .shadow(radius: 10)
-//                .transition(.move(edge: .bottom))
-//                .onDisappear { refreshShoppingData() }
-//            }
-//            
-//            // ✅ Add To-Do Item Sheet
-//            if showAddTodoItem {
-//                AddEditToDoItemView(toDoItem: selectedToDoItem,
-//                                    showAddTodoItem: $showAddTodoItem,
-//                                    isShowingAnySheet: $isShowingAnySheet,
-//                                    navigateToEditableList: $navigateToEditableList)
-//                .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                .background(Color.white)
-//                .cornerRadius(16)
-//                .shadow(radius: 10)
-//                .transition(.move(edge: .bottom))
-//                .onDisappear { refreshToDoData() }
-//            }
-//            
-//            // ✅ Edit Existing Shopping Item Sheet
-//            if let shoppingItem = selectedShoppingItem {
-//                AddEditShoppingItemView(
-//                    navigateToEditableList: .constant(false),
-//                    showAddShoppingItem: $showAddShoppingItem,
-//                    isShowingAnySheet: $isShowingAnySheet,
-//                    shoppingItem: shoppingItem
-//                )
-//                .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                .background(Color.white)
-//                .cornerRadius(16)
-//                .shadow(radius: 10)
-//                .transition(.move(edge: .bottom))
-//                .onDisappear {
-//                    selectedShoppingItem = nil
-//                    isShowingAnySheet = false
-//                    refreshShoppingData()
-//                }
-//            }
-//            
-//            // ✅ Edit Existing To-Do Item Sheet
-//            if let toDoItem = selectedToDoItem {
-//                AddEditToDoItemView(toDoItem: toDoItem,
-//                                    showAddTodoItem: $showAddTodoItem,
-//                                    isShowingAnySheet: $isShowingAnySheet,
-//                                    navigateToEditableList: .constant(false))
-//                .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                .background(Color.white)
-//                .cornerRadius(16)
-//                .shadow(radius: 10)
-//                .transition(.move(edge: .bottom))
-//                .onDisappear {
-//                    selectedToDoItem = nil
-//                    isShowingAnySheet = false
-//                    refreshToDoData()
-//                }
-//            }
-//        }
-//        .frame(maxWidth: .infinity, maxHeight: .infinity)
-//        .edgesIgnoringSafeArea(.all)
-//        .background(
-//            showAddShoppingItem || showAddTodoItem || selectedShoppingItem != nil || selectedToDoItem != nil
-//            ? Color.black.opacity(0.3)
-//            : Color.clear
-//        )
-//    }
-//    
-//    private func refreshShoppingData() {
-//        shoppingListViewModel.update/*GroupedShoppingItems*/(updateExists: true)
-//        dataUpdateManager.needsRefresh = true
-//        navigateToEditableList = true
-//        
-//        resetState()
-//    }
-//    
-//    private func refreshToDoData() {
-//        todoListViewModel.updateGroupedToDoItems(updateExists: true)
-//        dataUpdateManager.needsRefresh = true
-//        navigateToEditableList = true
-//        
-//        resetState()
-//    }
-//    
-//    private func resetState() {
-//        showAddShoppingItem = false
-//        showAddTodoItem = false
-//        isShowingAnySheet = false  // ✅ Ensures proper dismissal
-//    }
-//}
 
 //#Preview {
 //    CustomSheetView()

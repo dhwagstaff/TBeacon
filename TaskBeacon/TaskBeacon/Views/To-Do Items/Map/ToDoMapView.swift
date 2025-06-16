@@ -43,6 +43,9 @@ struct ToDoMapView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Text("Find Location")
+                .font(.title)
+
             // Top bar with title and buttons
             HStack {
                 Button(action: {
@@ -55,10 +58,10 @@ struct ToDoMapView: View {
                 
                 Spacer()
                 
-                Text("Find Location")
-                    .font(.headline)
-                
-                Spacer()
+//                Text("Find Location")
+//                    .font(.headline)
+//                
+//                Spacer()
                 
                 Button(action: {
                     if let selected = selectedItem {
@@ -147,6 +150,7 @@ struct ToDoMapView: View {
                 .background(Color(.systemBackground))
             }
         }
+        .padding(.top, 20)
         .onAppear {
             updateCameraPosition()
         }

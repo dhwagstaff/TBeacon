@@ -17,6 +17,8 @@ import UserNotifications
 struct TaskBeaconApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+   // @EnvironmentObject var entitlementManager: EntitlementManager
+    
     @Environment(\.scenePhase) var phase
     
     @State private var quickAction: String?
@@ -31,9 +33,8 @@ struct TaskBeaconApp: App {
     @StateObject private var entitlementManager = EntitlementManager()
     @StateObject private var subscriptionsManager: SubscriptionsManager
     @StateObject private var dataUpdateManager = DataUpdateManager()
-    @StateObject private var shoppingListViewModel = ShoppingListViewModel(context: PersistenceController.shared.container.viewContext)
+    @StateObject private var shoppingListViewModel = ShoppingListViewModel(context: PersistenceController.shared.container.viewContext, isEditingExistingItem: false)
 
-    
     @AppStorage("showLastEditor") private var showLastEditor: Bool = true
     @AppStorage("enableDarkMode") private var enableDarkMode: Bool = false
     @AppStorage("enableNotifications") private var enableNotifications: Bool = true
@@ -41,6 +42,9 @@ struct TaskBeaconApp: App {
     @AppStorage("geofenceRadius") private var geofenceRadius: Double = 804.67
     
     init() {
+        _shoppingListViewModel = StateObject(wrappedValue: ShoppingListViewModel(
+            context: PersistenceController.shared.container.viewContext, isEditingExistingItem: false))
+        
         let context = PersistenceController.shared.container.viewContext
         var items: [NSManagedObject] = []
         
@@ -53,6 +57,7 @@ struct TaskBeaconApp: App {
             
             items.append(contentsOf: todos)
             items.append(contentsOf: shoppingItems)
+            
             
             print("✅ Fetched \(items.count) items for geofencing.")
         } catch {
@@ -81,7 +86,7 @@ struct TaskBeaconApp: App {
                 .environmentObject(dataUpdateManager)
                 .environmentObject(entitlementManager)
                 .environmentObject(subscriptionsManager)
-                .environmentObject(shoppingListViewModel) // Add ShoppingListViewModel
+                .environmentObject(shoppingListViewModel)
                 .environment(\ .managedObjectContext, persistenceController.container.viewContext)
                 .id(entitlementManager.isPremiumUser)
                 .preferredColorScheme(enableDarkMode ? .dark : .light)
@@ -95,15 +100,8 @@ struct TaskBeaconApp: App {
                             if item.latitude != 0, item.longitude != 0 {
                                 let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
                                 locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-//                                locationManager.startMonitoring(identifier: item.uid ?? UUID().uuidString, coordinate: coordinate, item: item)
                             }
                         }
-                        
-//                        for item in shoppingItems {
-//                            if item.latitude != 0, item.longitude != 0 {
-//                                locationManager.startMonitoring(for: item) // ✅ Restart geofences
-//                            }
-//                        }
                     } catch {
                         print("❌ Failed to fetch Shopping items: \(error.localizedDescription)")
                     }

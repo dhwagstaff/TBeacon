@@ -156,7 +156,7 @@ struct SettingsView: View {
                     .disabled(isPrivacyOptionsButtonDisabled)
                     
                     // Add consent status indicator
-                    if !appDelegate.canRequestAds {
+                    if !appDelegate.adManager.canRequestAds {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.yellow)
