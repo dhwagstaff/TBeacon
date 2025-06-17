@@ -70,7 +70,7 @@ struct RewardedInterstitialContentView: View {
                 .foregroundColor(.secondary)
                 .padding()
 
-            Text("Watch an ad to earn an Extra To-Do or Shopping Tasks")
+            Text("Watch an ad to earn an Extra To-Do or Shopping Item")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .lineLimit(2)
@@ -91,7 +91,7 @@ struct RewardedInterstitialContentView: View {
                     .background(Color(hex: "1240AB"))
                     .cornerRadius(10)
             }
-            .opacity(isAdReady ? 1 : 0)
+           // .opacity(isAdReady ? 1 : 0)
             .padding()
             
             Button(action: {
@@ -117,19 +117,11 @@ struct RewardedInterstitialContentView: View {
             .padding()
         }
         .onAppear {
-           // if !countdownTimer.isComplete {
-                startNewAd()
-          //  }
+            startNewAd()
         }
         .onDisappear {
             countdownTimer.pause()
         }
-//        .onChange(of: countdownTimer.isComplete) {
-//            if countdownTimer.isComplete {
-//                showAdDialog = true
-//                viewModel.addCoins(1)
-//            }
-//        }
         .onChange(of: showAd) {
             if showAd {
                 viewModel.showRewardedAd()

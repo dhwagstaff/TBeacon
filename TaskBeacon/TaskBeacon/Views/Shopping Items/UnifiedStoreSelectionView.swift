@@ -430,10 +430,10 @@ struct UnifiedStoreSelectionView: View {
             .onTapGesture {
                 onSelect()
             }
-            .onAppear {
-                print("Store: \(store.name), Category: \(category)")
-               // store.isPreferred = (category == "Preferred Stores")
-            }
+//            .onAppear {
+//                print("Store: \(store.name), Category: \(category)")
+//               // store.isPreferred = (category == "Preferred Stores")
+//            }
         }
         
         private func formatDistance(_ distance: CLLocationDistance) -> String {
@@ -449,26 +449,6 @@ struct UnifiedStoreSelectionView: View {
                 if locationManager.stores.isEmpty {
                     LoadingOverlay()
                 }
-                
-//                VStack(spacing: 20) {
-//                    ProgressView()
-//                        .scaleEffect(2.0)
-//                        .tint(.accentColor)
-//                        .padding()
-//                        .background(
-//                            Circle()
-//                                .fill(Color(.systemBackground))
-//                                .shadow(radius: 5)
-//                        )
-//                    
-//                    Text("Finding stores...")
-//                        .font(.title3)
-//                        .fontWeight(.medium)
-//                        .foregroundColor(.primary)
-//                }
-//                .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                .background(Color(.systemBackground))
-//                .padding()
             } else if locationError {
                 locationErrorView
             } else if cannotFetch {
@@ -782,7 +762,7 @@ struct UnifiedStoreSelectionView: View {
                 do {
                     let search = MKLocalSearch(request: request)
                     let response = try await search.start()
-                    print("✅ Found \(response.mapItems.count) stores for '\(variation)'")
+                    print("✅ performSearchWithQuery Found \(response.mapItems.count) stores for '\(variation)'")
                     allStores.append(contentsOf: response.mapItems)
                 } catch {
                     print("❌ Error searching for '\(variation)': \(error)")

@@ -586,6 +586,15 @@ struct EditableListView: View {
                                 withAnimation(.easeIn(duration: 0.3)) {
                                     if locationManager.stores.isEmpty {
                                         isShowingLoadingOverlay = true
+                                        
+                                        shoppingListViewModel.beginAddFlow {
+                                            showAddShoppingItem = true
+                                            isShowingAnySheet = true
+                                        }
+                                    } else {
+                                        isShowingLoadingOverlay = false
+                                        showAddShoppingItem = true
+                                        isShowingAnySheet = true
                                     }
                                 }
                                 
@@ -594,11 +603,6 @@ struct EditableListView: View {
                                     withAnimation(.easeOut(duration: 0.3)) {
                                         isShowingLoadingOverlay = false
                                     }
-                                }
-                                
-                                shoppingListViewModel.beginAddFlow {
-                                    showAddShoppingItem = true
-                                    isShowingAnySheet = true
                                 }
                             } label: {
                                 Label("Shopping Item", systemImage: ImageSymbolNames.cartFill)
@@ -1509,19 +1513,19 @@ struct LoadingOverlay: View {
                     )
                 
                 Text("Loading Stores...")
-                    .font(.title2)  // Increased from headline
-                    .fontWeight(.bold)  // Added bold
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
                 Text("Finding stores near your location")
-                    .font(.headline)  // Increased from subheadline
+                    .font(.headline)
                     .foregroundColor(.secondary)
             }
-            .padding(30)  // Increased padding
+            .padding(30)
             .background(
-                RoundedRectangle(cornerRadius: 20)  // Increased corner radius
+                RoundedRectangle(cornerRadius: 20)
                     .fill(Color(.systemBackground))
-                    .shadow(radius: 15)  // Increased shadow
+                    .shadow(radius: 15)
             )
         }
         .transition(.opacity)

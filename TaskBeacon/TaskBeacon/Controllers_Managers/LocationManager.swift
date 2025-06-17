@@ -130,8 +130,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                 let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
 
                 monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
-                
-              //  regionIDToItemMap[uid] = item
             }
         }
     }
@@ -1040,14 +1038,6 @@ extension LocationManager: CLLocationManagerDelegate {
                         content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy: \(firstItem)"
                     }
                 }
-                
-//                if item.entity.name == "ToDoItemEntity" {
-//                    content.title = "To-Do Reminder"
-//                    content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete: \(item.value(forKey: "task") as? String ?? "your task")."
-//                } else if item.entity.name == "ShoppingItemEntity" {
-//                    content.title = "Shopping Reminder"
-//                    content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy \(item.value(forKey: "name") as? String ?? "your item")."
-//                }
                 
                 content.sound = .default
                 
