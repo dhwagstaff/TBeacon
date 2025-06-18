@@ -853,7 +853,9 @@ class ShoppingListViewModel: ListsViewModel {
             let isStoreAssignment = item.storeName != nil && !item.storeName!.isEmpty
             
             // Save the item to Core Data
-            try viewContext.save()
+            try await MainActor.run {
+                try viewContext.save()
+            }
             
             // Fetch all items to update the view model
             let saved: [ShoppingItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.shoppingItem.stringValue)
