@@ -24,25 +24,35 @@ class RewardedInterstitialViewModel: NSObject, ObservableObject, FullScreenConte
 
     private var rewardedInterstitialAd: RewardedInterstitialAd?
     
+    var onAdFailedToShow: (() -> Void)?
+    
     func loadAd() async {
         do {
             rewardedInterstitialAd = try await RewardedInterstitialAd.load(
                 with: "ca-app-pub-3940256099942544/6978759866", request: Request())
-            
+
+//            rewardedInterstitialAd = try await RewardedInterstitialAd.load(
+//                with: "ca-app-pub-7371576916843305/3637351852", request: Request())
+
             rewardedInterstitialAd?.fullScreenContentDelegate = self
             
             await MainActor.run {
                 self.isAdReady = true
             }
         } catch {
-            print(
-                "Failed to load rewarded interstitial ad with error: \(error.localizedDescription)")
+            print("Failed to load rewarded interstitial ad with error: \(error.localizedDescription)")
         }
     }
     
     func showRewardedAd() {
         guard let rewardedInterstitialAd = rewardedInterstitialAd else {
-            return print("Rewarded Ad wasn't ready.")
+            print("Rewarded Ad wasn't ready.")
+            
+            DispatchQueue.main.async {
+                self.onAdFailedToShow?()
+            }
+            
+            return
         }
         
         rewardedInterstitialAd.present(from: nil) {

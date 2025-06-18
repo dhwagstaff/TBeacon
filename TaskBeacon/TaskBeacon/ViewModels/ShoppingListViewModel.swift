@@ -743,12 +743,25 @@ class ShoppingListViewModel: ListsViewModel {
             
             // Monitor region if needed
             if let uid = itemToSave.uid {
-                locationManager.monitorRegionAtLocation(
-                    center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude),
-                    identifier: uid,
-                    item: itemToSave
-                )
+                // Only monitor if the shopping item has an assigned store
+                if !(itemToSave.storeName?.isEmpty ?? true) &&
+                   itemToSave.latitude != 0 &&
+                   itemToSave.longitude != 0 {
+                    locationManager.monitorRegionAtLocation(
+                        center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude),
+                        identifier: uid,
+                        item: itemToSave
+                    )
+                }
             }
+            
+//            if let uid = itemToSave.uid {
+//                locationManager.monitorRegionAtLocation(
+//                    center: CLLocationCoordinate2D(latitude: itemToSave.latitude, longitude: itemToSave.longitude),
+//                    identifier: uid,
+//                    item: itemToSave
+//                )
+//            }
         }
     }
     

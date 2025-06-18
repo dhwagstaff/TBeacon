@@ -24,6 +24,7 @@ struct RewardedInterstitialContentView: View {
     @State private var showAdDialog = false
     @State private var showAd = false
     @State private var isAdReady = false
+    @State private var showAdErrorAlert = false
 
     @Binding var isPresented: Bool
     
@@ -36,6 +37,21 @@ struct RewardedInterstitialContentView: View {
             if showAdDialog {
                 AdDialogContentView(isPresenting: $showAdDialog, countdownComplete: $showAd)
                     .opacity(showAdDialog ? 1 : 0)
+            }
+        }
+        .alert(isPresented: $showAdErrorAlert) {
+            Alert(
+                title: Text("Ad Not Available"),
+                message: Text("No ad is available right now. Please try again later."),
+                dismissButton: .default(Text("OK")) {
+                    isPresented = false // Dismiss the RewardedInterstitialContentView
+                    showAdDialog = false // Dismiss AdDialogContentView if needed
+                }
+            )
+        }
+        .onAppear {
+            viewModel.onAdFailedToShow = {
+                showAdErrorAlert = true
             }
         }
         .onChange(of: viewModel.isAdCompleted) {

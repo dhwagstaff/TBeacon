@@ -125,13 +125,48 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                 let latitude = item.value(forKey: "latitude") as? Double ?? 0.0
                 let longitude = item.value(forKey: "longitude") as? Double ?? 0.0
                 
-                print("\n\nitem ::: \(item)\n\n")
-                print("this lat ::: \(latitude) ::: \(longitude)")
-                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-
-                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
+                // Check if this item should be monitored based on its type
+                let shouldMonitor = shouldMonitorItem(item, latitude: latitude, longitude: longitude)
+                
+                if shouldMonitor {
+                    print("\n\nitem ::: \(item)\n\n")
+                    print("this lat ::: \(latitude) ::: \(longitude)")
+                    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                    monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
+                }
             }
         }
+        
+//        for item in items {
+//            if let uid = item.value(forKey: "uid") as? String {
+//                let latitude = item.value(forKey: "latitude") as? Double ?? 0.0
+//                let longitude = item.value(forKey: "longitude") as? Double ?? 0.0
+//                
+//                print("\n\nitem ::: \(item)\n\n")
+//                print("this lat ::: \(latitude) ::: \(longitude)")
+//                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+//
+//                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
+//            }
+//        }
+    }
+    
+    private func shouldMonitorItem(_ item: NSManagedObject, latitude: Double, longitude: Double) -> Bool {
+        // Must have valid coordinates
+        guard latitude != 0, longitude != 0 else { return false }
+        
+        // Check entity type and specific conditions
+        if item.entity.name == "ToDoItemEntity" {
+            // To-Do items: only monitor if they have a location name (meaning user selected a location)
+            let addressOrLocationName = item.value(forKey: "addressOrLocationName") as? String ?? ""
+            return !addressOrLocationName.isEmpty
+        } else if item.entity.name == "ShoppingItemEntity" {
+            // Shopping items: only monitor if they have an assigned store
+            let storeName = item.value(forKey: "storeName") as? String ?? ""
+            return !storeName.isEmpty
+        }
+        
+        return false
     }
     
     func loadStores() async {
@@ -797,8 +832,8 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-        print("❌ Monitoring failed for region: \(region?.identifier ?? "unknown")")
-        print("Error: \(error.localizedDescription)")
+     //   print("❌ Monitoring failed for region: \(region?.identifier ?? "unknown")")
+     //   print("Error: \(error.localizedDescription)")
         
         // Attempt to restart monitoring if it failed
         if let region = region {

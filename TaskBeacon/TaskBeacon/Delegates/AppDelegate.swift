@@ -88,6 +88,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         
         print("🚀 Initializing Google Mobile Ads SDK...")
         
+     //   MobileAds.shared.requestConfiguration.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
+        
         // Delay consent gathering to ensure window is ready
         // Start the consent flow
         Task {

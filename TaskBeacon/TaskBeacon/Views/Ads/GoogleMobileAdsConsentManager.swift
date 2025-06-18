@@ -44,7 +44,13 @@ class GoogleMobileAdsConsentManager: NSObject {
         
         // For testing purposes, you can use UMPDebugGeography to simulate a location.
         let debugSettings = DebugSettings()
-        // debugSettings.geography = DebugGeography.EEA
+        
+//        debugSettings.testDeviceIdentifiers = ["6352B743-4C51-414E-98D1-30E98F63521E"]
+        
+        // put this back in to have my device set as a test device
+       // debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
+     //   debugSettings.geography = .EEA // Simulate being in the EEA to force consent form
+
         parameters.debugSettings = debugSettings
         
         // [START request_consent_info_update]
@@ -76,9 +82,7 @@ class GoogleMobileAdsConsentManager: NSObject {
                     consentGatheringComplete(error)
                 }
             }
-            // [END_EXCLUDE]
         }
-        // [END request_consent_info_update]
     }
     
     /// Helper method to call the UMP SDK method to present the privacy options form.

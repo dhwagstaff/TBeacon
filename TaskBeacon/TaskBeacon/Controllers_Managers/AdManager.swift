@@ -29,19 +29,13 @@ class AdManager: ObservableObject {
     let cooldownTime: TimeInterval = 120
     let interstitialCooldownTime: TimeInterval = 180
     let minGapBetweenAds: TimeInterval = 120
-    
-    func setRewardedInterstitialViewModel(_ viewModel: RewardedInterstitialViewModel) {
-        self.rewardedInterstitialViewModel = viewModel
-    }
-    
-    func setInterstitialViewModel(_ viewModel: InterstitialViewModel) {
-        self.interstitialViewModel = viewModel
-    }
-    
+        
     init() {
         // Load saved personalization preference
         hasShownPersonalizationPrompt = UserDefaults.standard.bool(forKey: "hasShownPersonalizationPrompt")
         isPersonalizedAdsEnabled = UserDefaults.standard.bool(forKey: "isPersonalizedAdsEnabled")
+        
+        self.interstitialViewModel = InterstitialViewModel()
         
         // Initialize consent status
         Task { @MainActor in
@@ -72,6 +66,7 @@ class AdManager: ObservableObject {
                     isSDKInitialized = true
                 }
                 loadNewAd()
+                loadInterstitialAd()
             }
         } catch {
             print("❌ Error updating consent status: \(error)")
@@ -127,51 +122,6 @@ class AdManager: ObservableObject {
         print("⏳ Min gap check: \(sinceAnyAd) seconds since any ad. Required: \(minGapBetweenAds)")
         return canShow
     }
-    
-//    func canShowAd() -> Bool {
-//        // First check if ad was cancelled
-//        if isCancelled {
-//            print("❌ Cannot show ad: Ad was cancelled")
-//            return false
-//        }
-//        
-//        // Then check cooldown
-//        guard let lastAdTime = lastAdTime else {
-//            print("✅ No last ad time, allowing ad.")
-//            return true
-//        }
-//
-//        let timeSinceLastAd = Date().timeIntervalSince(lastAdTime)
-//        let canShow = timeSinceLastAd >= cooldownTime
-//
-//        print("⏳ Ad cooldown check: \(timeSinceLastAd) seconds since last ad. Can show? \(canShow)")
-//        return canShow
-//    }
-//    
-//    func canShowInterstitialAd() -> Bool {  // Add this
-//        guard let lastInterstitialAdTime = lastInterstitialAdTime else {
-//            print("✅ No last interstitial ad time, allowing ad.")
-//            return true
-//        }
-//
-//        let timeSinceLastAd = Date().timeIntervalSince(lastInterstitialAdTime)
-//        let canShow = timeSinceLastAd >= interstitialCooldownTime
-//
-//        print("⏳ Interstitial ad cooldown check: \(timeSinceLastAd) seconds since last ad. Can show? \(canShow)")
-//        return canShow
-//    }
-    
-//    func cancelAd() {
-//        isCancelled = true
-//        isAdReady = false
-//        
-//        print(" in ad manger cancelAd and isCancelled : \(isCancelled)")
-//        
-//        // Reset cancellation after 24 hours
-//        DispatchQueue.main.asyncAfter(deadline: .now() + cancellationCooldown) {
-//            self.isCancelled = false
-//        }
-//    }
     
     // Add a new method to check if we can show the rewards section
     func canShowRewardsSection() -> Bool {

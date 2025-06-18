@@ -105,12 +105,18 @@ class ToDoListViewModel: ListsViewModel {
                 await saveToDoItemToCoreData(item: item)
                 
                 if let uid = item.uid {
-                    locationManager.monitorRegionAtLocation(
-                        center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),
-                        identifier: uid,
-                        item: item
-                    )
+                    // Only monitor if the item has a location (user selected "Item Needs Location" and chose a location)
+                    if !(item.addressOrLocationName?.isEmpty ?? true) && item.latitude != 0 && item.longitude != 0 {                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),identifier: uid,item: item)
+                    }
                 }
+                
+//                if let uid = item.uid {
+//                    locationManager.monitorRegionAtLocation(
+//                        center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),
+//                        identifier: uid,
+//                        item: item
+//                    )
+//                }
             }
         }
     }

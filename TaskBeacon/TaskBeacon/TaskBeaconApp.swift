@@ -97,11 +97,21 @@ struct TaskBeaconApp: App {
                         let shoppingItems: [ShoppingItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.shoppingItem.stringValue)
                         
                         for item in shoppingItems {
-                            if item.latitude != 0, item.longitude != 0 {
+                            // Only monitor shopping items that have an assigned store
+                            if !(item.storeName?.isEmpty ?? true),
+                               item.latitude != 0,
+                               item.longitude != 0 {
                                 let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
                                 locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
                             }
                         }
+                        
+//                        for item in shoppingItems {
+//                            if item.latitude != 0, item.longitude != 0 {
+//                                let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+//                                locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
+//                            }
+//                        }
                     } catch {
                         print("❌ Failed to fetch Shopping items: \(error.localizedDescription)")
                     }

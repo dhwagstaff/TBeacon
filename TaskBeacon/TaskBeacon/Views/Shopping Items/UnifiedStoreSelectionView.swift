@@ -49,6 +49,8 @@ struct UnifiedStoreSelectionView: View {
     @Binding var isPreferred: Bool
     
     private let categories = StoreCategory.allCases.map { $0.displayName }
+    
+    let selectedShoppingItem: ShoppingItemEntity?
         
     init(searchQuery: String = Constants.emptyString,
          cannotFetch: Bool = false,
@@ -68,7 +70,8 @@ struct UnifiedStoreSelectionView: View {
          selectedStore: Binding<MKMapItem?>,
          latitude: Binding<Double?>,
          longitude: Binding<Double?>,
-         isPreferred: Binding<Bool>) {
+         isPreferred: Binding<Bool>,
+         selectedShoppingItem: ShoppingItemEntity? = nil) {
         self.searchQuery = searchQuery
         self.cannotFetch = cannotFetch
         self.selectedCategoryIndex = selectedCategoryIndex
@@ -80,6 +83,7 @@ struct UnifiedStoreSelectionView: View {
         self.locationError = locationError
         self.filteredStores = filteredStores
         self.selectedCategory = selectedCategory
+        
         self._isPresented = isPresented
         self._selectedStoreFilter = selectedStoreFilter
         self._storeName = storeName
@@ -88,6 +92,8 @@ struct UnifiedStoreSelectionView: View {
         self._latitude = latitude
         self._longitude = longitude
         self._isPreferred = isPreferred
+        
+        self.selectedShoppingItem = selectedShoppingItem
     }
     
     var preferredBanner: some View {
@@ -612,6 +618,23 @@ struct UnifiedStoreSelectionView: View {
         }
         
         print("in selectStore storeName ::: \(storeName) ::: storeAddress ::: \(storeAddress)")
+        
+        if let item = selectedShoppingItem {
+            Task {
+                await viewModel.saveShoppingItem(
+                    storeName: storeName,
+                    shoppingItem: item,
+                    name: item.name ?? "",
+                    selectedCategory: item.category ?? "",
+                    storeAddress: storeAddress,
+                    latitude: latitude,
+                    longitude: longitude,
+                    expirationDate: item.expirationDate ?? Date(),
+                    selectedCategoryEmoji: item.categoryEmoji ?? "",
+                    isPreferred: isPreferred
+                )
+            }
+        }
         
         self.isPresented = false
     }

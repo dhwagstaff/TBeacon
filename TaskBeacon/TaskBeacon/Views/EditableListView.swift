@@ -669,6 +669,7 @@ struct EditableListView: View {
                 
                 if let item = selectedShoppingItem, let store = selectedStore {
                     // Update the item with store information
+                    
                     item.storeName = storeName
                     item.storeAddress = storeAddress
                     
@@ -690,32 +691,14 @@ struct EditableListView: View {
                             item.emoji = emoji
                         }
                     }
-                    
-                    // Save to Core Data
-                    //                        do {
-                    //                            try viewContext.save()
-                    //                            print("💾 Successfully saved to Core Data")
-                    //
-                    //                            DispatchQueue.main.async {
-                    //                                // First, fetch fresh data from Core Data
-                    //                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-                    //                                if let items = try? viewContext.fetch(request) {
-                    //                                    // Update the view model's data
-                    //                                    shoppingListViewModel.shoppingItems = items
-                    //
-                    //                                    // Clear and rebuild the groupings
-                    //                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
-                    //                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
-                    //
-                    //                                    // Force view refresh
-                    //                                    refreshTrigger = UUID()
-                    //                                }
-                    //                            }
-                    //                        } catch {
-                    //                            print("❌ Error saving to Core Data: \(error)")
-                    //                        }
+                                        
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        self.refreshDataAndViews()
+                        self.handleStoreAssignment()
+                    }
                     
                     // Reset states
+                    showStoreSelectionSheet = false
                     selectedShoppingItem = nil
                     selectedStore = nil
                 }
@@ -727,7 +710,8 @@ struct EditableListView: View {
                                           selectedStore: $selectedStore,
                                           latitude: $latitude,
                                           longitude: $longitude,
-                                          isPreferred: $isPreferred
+                                          isPreferred: $isPreferred,
+                                          selectedShoppingItem: selectedShoppingItem
                 )
             }
             .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
@@ -779,13 +763,24 @@ struct EditableListView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.refreshDataAndViews()
                 }
-                                
+                    
                 for item in shoppingListViewModel.shoppingItems {
-                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
+                    // Only monitor shopping items that have an assigned store
+                    if let uid = item.uid,
+                       !(item.storeName?.isEmpty ?? true), // Must have a store name
+                       item.latitude != 0,
+                       item.longitude != 0 {
                         let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
+                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
                     }
                 }
+                
+//                for item in shoppingListViewModel.shoppingItems {
+//                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
+//                        let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+//                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
+//                    }
+//                }
             }
             .onDisappear {
                 print("♻️ Cleaned up resources in EditableListView")
