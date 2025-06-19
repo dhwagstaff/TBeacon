@@ -10,7 +10,7 @@ import Foundation
 
 struct FreeLimitChecker {
     // Add a constant for the base free limit
-    private static let BASE_FREE_LIMIT = 5
+    private static let BASE_FREE_LIMIT = 50
     
     // Add a UserDefaults key for tracking rewarded items
     private static let REWARDED_ITEMS_KEY = "rewardedItemsCount"

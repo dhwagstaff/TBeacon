@@ -25,6 +25,7 @@ class AdManager: ObservableObject {
 
     var lastAdTime: Date?
     var lastInterstitialAdTime: Date?
+    var entitlementManager: EntitlementManager?
 
     let cooldownTime: TimeInterval = 120
     let interstitialCooldownTime: TimeInterval = 180
@@ -112,6 +113,23 @@ class AdManager: ObservableObject {
     }
 
     func canShowInterstitialAd() -> Bool {
+        print("🔍 AdManager.entitlementManager is nil? \(entitlementManager == nil)")
+
+        if let em = entitlementManager {
+            print("🔍 AdManager.entitlementManager.isPremiumUser: \(em.isPremiumUser)")
+            print("🔍 AdManager.entitlementManager instance: \(em)")
+        } else {
+            print("🔍 AdManager.entitlementManager is nil!")
+        }
+        
+        let isPremium = entitlementManager?.isPremiumUser ?? false
+        print("🚫 AdManager checking premium status: \(isPremium)")
+        
+        if isPremium {
+            print("🚫 Not showing interstitial ad - user is premium")
+            return false
+        }
+        
         let now = Date()
         let sinceLastInterstitial = lastInterstitialAdTime.map { now.timeIntervalSince($0) } ?? .infinity
         let sinceLastRewarded = lastAdTime.map { now.timeIntervalSince($0) } ?? .infinity
@@ -173,6 +191,16 @@ class AdManager: ObservableObject {
         print("🔄 Loading new interstitial ad...")
         Task {
             await interstitialViewModel?.loadAd()
+        }
+    }
+
+    // Add a method to refresh entitlement status
+    func refreshEntitlementStatus() {
+        print("🔄 AdManager refreshing entitlement status...")
+        if let em = entitlementManager {
+            print("🔍 Current premium status: \(em.isPremiumUser)")
+        } else {
+            print("❌ No entitlement manager available")
         }
     }
 }

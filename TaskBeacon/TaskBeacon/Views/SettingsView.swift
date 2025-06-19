@@ -41,8 +41,13 @@ struct SettingsView: View {
         NavigationView {
             Form {
                 Section(header: Text("Subscription")) {
-                    if subscriptionsManager.purchasedProductIDs.contains("com.pocketmeapps.taskbeacon.premium") {
-                        Text("✅ You have Task Beacon Premium!")
+                    let hasPremiumSubscription = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ||
+                                                subscriptionsManager.purchasedProductIDs.contains("PMA_TBPA_25")
+
+                    if hasPremiumSubscription {
+                        let subscriptionType = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ? "Monthly" : "Annual"
+
+                        Text("✅ You have Task Beacon Premium (\(subscriptionType))!")
                             .foregroundColor(.green)
                             .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
 
@@ -53,16 +58,19 @@ struct SettingsView: View {
                     } else {
                         if !subscriptionsManager.products.isEmpty {
                             ForEach(subscriptionsManager.products, id: \.id) { product in
-                                Button(action: {
-                                    Task {
-                                        await subscriptionsManager.buyProduct(product)
+                                // Only show upgrade options for subscriptions the user doesn't already have
+                                if !subscriptionsManager.purchasedProductIDs.contains(product.id) {
+                                    Button(action: {
+                                        Task {
+                                            await subscriptionsManager.buyProduct(product)
+                                        }
+                                    }) {
+                                        Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
                                     }
-                                }) {
-                                    Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
+                                    .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
-                                .frame(maxWidth: .infinity)
                             }
                         } else {
                             ProgressView("Loading purchase options...")
@@ -82,6 +90,49 @@ struct SettingsView: View {
                         .foregroundColor(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
                     }
                 }
+                
+//                Section(header: Text("Subscription")) {
+//                    if subscriptionsManager.purchasedProductIDs.contains("com.pocketmeapps.taskbeacon.premium") {
+//                        Text("✅ You have Task Beacon Premium!")
+//                            .foregroundColor(.green)
+//                            .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
+//
+//                        Button("Manage Subscription") {
+//                            openAppStoreSubscriptionManagement()
+//                        }
+//                        .foregroundColor(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
+//                    } else {
+//                        if !subscriptionsManager.products.isEmpty {
+//                            ForEach(subscriptionsManager.products, id: \.id) { product in
+//                                Button(action: {
+//                                    Task {
+//                                        await subscriptionsManager.buyProduct(product)
+//                                    }
+//                                }) {
+//                                    Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
+//                                }
+//                                .buttonStyle(.borderedProminent)
+//                                .tint(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
+//                                .frame(maxWidth: .infinity)
+//                            }
+//                        } else {
+//                            ProgressView("Loading purchase options...")
+//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+//                                .onAppear {
+//                                    Task {
+//                                        await subscriptionsManager.loadProducts()
+//                                    }
+//                                }
+//                        }
+//
+//                        Button("Restore Purchases") {
+//                            Task {
+//                                await subscriptionsManager.restorePurchases()
+//                            }
+//                        }
+//                        .foregroundColor(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
+//                    }
+//                }
 
                 // 🔹 Appearance
                 Section(header: Text("Appearance")) {

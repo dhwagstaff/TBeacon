@@ -198,9 +198,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         await MainActor.run { self.isFetching = true }
         
         // Get current user location directly from CLLocationManager
-        let locationManager = CLLocationManager()
+       // see note same statement in func performDirect... let locationManager = CLLocationManager()
         
-        guard let currentLocation = locationManager.location?.coordinate else {
+        guard let currentLocation = self.locationManager.location?.coordinate else {
             print("❌ No location available for search")
             await MainActor.run {
                 self.isFetching = false
@@ -508,13 +508,13 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         print("🔍 Performing direct MapKit search in EditableListView")
         
         // Get current user location from CLLocationManager
-        let locationManager = CLLocationManager()
+       // removed as potential fix for authorization allow always but may be working for maps and store lookup: let locationManager = CLLocationManager()
         let searchCenter: CLLocationCoordinate2D
         
         if locationManager.authorizationStatus == .authorizedWhenInUse ||
             locationManager.authorizationStatus == .authorizedAlways {
             
-            if let currentLocation = locationManager.location?.coordinate {
+            if let currentLocation = self.locationManager.location?.coordinate {
                 print("📍 Using current location for performDirectMapKitSearch: \(currentLocation.latitude), \(currentLocation.longitude)")
                 searchCenter = currentLocation
             } else if let userLocation = self.userLocation {
@@ -842,31 +842,103 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        print("🔄 Location authorization changed to: \(manager.authorizationStatus.rawValue)")
+
         // Call the closure with the new authorization status
         onAuthStatusChange?(manager.authorizationStatus)
 
-        if manager.authorizationStatus == .authorizedWhenInUse {
+        switch manager.authorizationStatus {
+        case .authorizedAlways:
+            print("✅ Location authorization changed to Always Allow")
             locationManager.startUpdatingLocation()
             monitorItemLocations()
+            
+        case .authorizedWhenInUse:
+            print("⚠️ Location authorization changed to When In Use")
+            // Start updating location but show warning about geofencing limitations
+            locationManager.startUpdatingLocation()
+            monitorItemLocations()
+            
+            // Optionally, you could show a warning to the user here
+            DispatchQueue.main.async {
+                // You could trigger a UI alert here to explain the limitation
+                self.showLimitedLocationWarning()
+                print("⚠️ Geofencing may not work properly with 'When In Use' permission")
+            }
+            
+        case .denied, .restricted:
+            print("❌ Location authorization denied or restricted")
+            // Stop location updates and monitoring
+            locationManager.stopUpdatingLocation()
+
+            for region in locationManager.monitoredRegions {
+                locationManager.stopMonitoring(for: region)
+                print("Stopped monitoring region: \(region.identifier)")
+            }
+        case .notDetermined:
+            print("❓ Location authorization not determined")
+            // This shouldn't happen in this callback, but handle it anyway
+            
+        @unknown default:
+            print("❓ Unknown location authorization status")
         }
+    }
+    
+    private func showLimitedLocationWarning() {
+        PermissionManager.shared.showPermissionAlert(for: .locationLimited)
+        print("⚠️ Warning: Geofencing notifications may not work properly with 'When In Use' location permission")
     }
 
     func requestAuthorization() {
         let status = locationManager.authorizationStatus // Direct access
         
+        print("🔍 LocationManager.requestAuthorization() called - current status: \(status.rawValue)")
+
         switch status {
         case .notDetermined:
+            print("📍 Requesting Always Allow authorization...")
+            print("📍 About to call requestAlwaysAuthorization()...")
             locationManager.requestAlwaysAuthorization()
+            print("📍 requestAlwaysAuthorization() called successfully")
+            
+            // Add this debug check
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                let newStatus = self.locationManager.authorizationStatus
+                print("🔍 Status after 1 second: \(newStatus.rawValue)")
+            }
         case .authorizedAlways:
-            print("✅ authorizedAlways")
+            print("✅ Location access granted - Always")
             locationManager.startUpdatingLocation()
         case .authorizedWhenInUse:
-            print("⚠️ Upgrade to always for background geofencing")
-            locationManager.requestAlwaysAuthorization()
+            print("⚠️ User has 'While Using' but geofencing requires 'Always Allow'")
+            // Show custom alert explaining why "Always Allow" is needed
+            DispatchQueue.main.async {
+                PermissionManager.shared.showPermissionAlert(for: .locationLimited)
+            }
         case .denied, .restricted:
             print("❌ Location access denied or restricted")
         @unknown default:
             print("❓ Unknown location status")
+        }
+    }
+    
+    func testPermissionRequest() {
+        print("🧪 Testing permission request...")
+        
+        // Create a fresh CLLocationManager for testing
+        let testManager = CLLocationManager()
+        testManager.delegate = self
+        
+        print("🧪 Test manager created: \(testManager)")
+        print("🧪 Test manager delegate set: \(testManager.delegate != nil)")
+        print("🧪 Test manager authorization status: \(testManager.authorizationStatus.rawValue)")
+        
+        if testManager.authorizationStatus == .notDetermined {
+            print("🧪 Requesting permission with test manager...")
+            testManager.requestAlwaysAuthorization()
+            print("🧪 Test permission request sent")
+        } else {
+            print("🧪 Test manager already has authorization: \(testManager.authorizationStatus.rawValue)")
         }
     }
 
@@ -1052,8 +1124,10 @@ extension LocationManager: CLLocationManagerDelegate {
                     .prefix(5)  // Limit to 5 items
                 
                 let itemNames = items.compactMap { item -> String? in
-                    if let title = item.value(forKey: "title") as? String {
-                        return title
+                    if item.entity.name == "ToDoItemEntity" {
+                        return item.value(forKey: "Task") as? String
+                    } else if item.entity.name == "ShoppingItemEntity" {
+                        return item.value(forKey: "name") as? String
                     }
                     return nil
                 }

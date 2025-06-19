@@ -13,8 +13,13 @@ class InterstitialViewModel: NSObject, ObservableObject, FullScreenContentDelega
 
     func loadAd() async {
         do {
+            // test ad unit id
             interstitialAd = try await InterstitialAd.load(
                 with: "ca-app-pub-3940256099942544/4411468910",
+
+            // live ad unit id
+//            interstitialAd = try await InterstitialAd.load(
+//                with: "ca-app-pub-7371576916843305/8036047270",
                 request: Request()
             )
             interstitialAd?.fullScreenContentDelegate = self

@@ -28,6 +28,7 @@ class PermissionManager: ObservableObject {
         case camera
         case location
         case notifications
+        case locationLimited
         
         var title: String {
             switch self {
@@ -37,6 +38,8 @@ class PermissionManager: ObservableObject {
                 return "Location Access Required"
             case .notifications:
                 return "Notifications Required"
+            case .locationLimited:
+                return "Limited Location Access"
             }
         }
         
@@ -48,6 +51,8 @@ class PermissionManager: ObservableObject {
                 return "To find stores near you and receive location-based reminders, please enable location access in Settings."
             case .notifications:
                 return "To receive reminders when you're near a store, please enable notifications in Settings."
+            case .locationLimited:
+                return "Task Beacon needs 'Always Allow' location access to send you notifications when you're near stores with your shopping items. Without this, you won't receive location-based reminders when the app is in the background. Please go to Settings and change location access to 'Always Allow'."
             }
         }
     }
@@ -70,7 +75,7 @@ class PermissionManager: ObservableObject {
         switch type {
         case .camera:
             return convertCameraStatus(cameraStatus)
-        case .location:
+        case .location, .locationLimited:
             return convertLocationStatus(locationStatus)
         case .notifications:
             return convertNotificationStatus(notificationStatus)
@@ -98,8 +103,10 @@ class PermissionManager: ObservableObject {
     
     private func convertLocationStatus(_ status: CLAuthorizationStatus) -> PermissionStatus {
         switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            return .authorized
+        case .authorizedAlways:
+            return .authorized  // Full functionality
+        case .authorizedWhenInUse:
+            return .denied      // Treat as denied because it's insufficient for geofencing
         case .denied, .restricted:
             return .denied
         case .notDetermined:
@@ -108,6 +115,19 @@ class PermissionManager: ObservableObject {
             return .notDetermined
         }
     }
+    
+//    private func convertLocationStatus(_ status: CLAuthorizationStatus) -> PermissionStatus {
+//        switch status {
+//        case .authorizedWhenInUse, .authorizedAlways:
+//            return .authorized
+//        case .denied, .restricted:
+//            return .denied
+//        case .notDetermined:
+//            return .notDetermined
+//        @unknown default:
+//            return .notDetermined
+//        }
+//    }
     
     private func convertNotificationStatus(_ status: UNAuthorizationStatus) -> PermissionStatus {
         switch status {
@@ -126,7 +146,7 @@ class PermissionManager: ObservableObject {
         switch type {
         case .camera:
             return await checkCameraPermission()
-        case .location:
+        case .location, .locationLimited:
             return checkLocationPermission()
         case .notifications:
             return await checkNotificationPermission()
@@ -152,16 +172,31 @@ class PermissionManager: ObservableObject {
     private func checkLocationPermission() -> Bool {
         let status = locationManager.authorizationStatus
         
+        print("🔍 PermissionManager.checkLocationPermission() - status: \(status.rawValue)")
+
         switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
+        case .authorizedAlways:
+            print("✅ Location already authorized - Always")
+
+            return true
+        case .authorizedWhenInUse:
+            print("⚠️ Location authorized - When In Use (insufficient for geofencing)")
+
+            showPermissionAlert(for: .location)
             return true
         case .notDetermined:
+            print("📍 Location not determined - requesting authorization")
+
             locationManager.requestAuthorization()
             return false
         case .denied, .restricted:
+            print("❌ Location denied or restricted")
+
             showPermissionAlert(for: .location)
             return false
         @unknown default:
+            print("❓ Unknown location status")
+
             return false
         }
     }
@@ -186,7 +221,7 @@ class PermissionManager: ObservableObject {
         }
     }
     
-    private func showPermissionAlert(for type: PermissionType) {
+    func showPermissionAlert(for type: PermissionType) {
         DispatchQueue.main.async {
             self.permissionAlertTitle = type.title
             self.permissionAlertMessage = type.message

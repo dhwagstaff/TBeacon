@@ -71,8 +71,8 @@ struct AddEditToDoItemView: View {
         self.isEditingExistingItem = isEditingExistingItem
 
         // Initialize Entitlement and Subscription Managers
-        let entitlementManager = EntitlementManager()
-        let subscriptionsManager = SubscriptionsManager(entitlementManager: entitlementManager)
+//        let entitlementManager = EntitlementManager.shared
+//        let subscriptionsManager = SubscriptionsManager(entitlementManager: entitlementManager)
 
         self._showAddTodoItem = showAddTodoItem
         self._isShowingAnySheet = isShowingAnySheet

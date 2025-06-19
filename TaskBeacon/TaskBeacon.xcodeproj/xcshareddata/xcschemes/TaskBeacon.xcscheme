@@ -54,6 +54,9 @@
          identifier = "../../TaskBeacon/Resources/Home.gpx"
          referenceType = "0">
       </LocationScenarioReference>
+      <StoreKitConfigurationFileReference
+         identifier = "../../TaskBeacon/Resources/StoreKitConfiguration.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

@@ -30,7 +30,7 @@ struct TaskBeaconApp: App {
     
     @StateObject private var locationManager: LocationManager
     @StateObject private var notificationDelegate = NotificationDelegate()
-    @StateObject private var entitlementManager = EntitlementManager()
+    @StateObject private var entitlementManager = EntitlementManager.shared
     @StateObject private var subscriptionsManager: SubscriptionsManager
     @StateObject private var dataUpdateManager = DataUpdateManager()
     @StateObject private var shoppingListViewModel = ShoppingListViewModel(context: PersistenceController.shared.container.viewContext, isEditingExistingItem: false)
@@ -67,8 +67,8 @@ struct TaskBeaconApp: App {
         // Initialize the LocationManager singleton with fetched items
         LocationManager.shared.initializeWithItems(items, context: context)
         
-        // Initialize Subscription Manager with Entitlement Manager
-        let entitlementManager = EntitlementManager()
+        // Use the singleton EntitlementManager consistently
+        let entitlementManager = EntitlementManager.shared
         let subscriptionsManager = SubscriptionsManager(entitlementManager: entitlementManager)
         
         // Initialize all StateObject properties
@@ -77,6 +77,9 @@ struct TaskBeaconApp: App {
         self._entitlementManager = StateObject(wrappedValue: entitlementManager)
         self._subscriptionsManager = StateObject(wrappedValue: subscriptionsManager)
         self._dataUpdateManager = StateObject(wrappedValue: DataUpdateManager())
+        
+        // Set up the relationship between EntitlementManager and SubscriptionsManager
+        entitlementManager.subscriptionsManager = subscriptionsManager
     }
     
     var body: some Scene {
@@ -91,7 +94,24 @@ struct TaskBeaconApp: App {
                 .id(entitlementManager.isPremiumUser)
                 .preferredColorScheme(enableDarkMode ? .dark : .light)
                 .task {
+                    print("🔍 App task started - requesting permissions")
+                    
+                    // Request location permission early in app lifecycle
+                    let permissionManager = PermissionManager.shared
+                    if await permissionManager.checkAndRequestPermission(for: .location) {
+                        print("✅ Location permission granted in app task")
+                    } else {
+                        print("❌ Location permission not granted in app task")
+                    }
+                    
+                    // Request notification permission
+                    _ = await permissionManager.checkAndRequestPermission(for: .notifications)
+
+                    // Ensure subscription status is up to date
                     await subscriptionsManager.updatePurchasedProducts()
+                    
+                    // Force refresh EntitlementManager status
+                    entitlementManager.forceRefreshSubscriptionStatus()
                     
                     do {
                         let shoppingItems: [ShoppingItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.shoppingItem.stringValue)
@@ -105,18 +125,13 @@ struct TaskBeaconApp: App {
                                 locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
                             }
                         }
-                        
-//                        for item in shoppingItems {
-//                            if item.latitude != 0, item.longitude != 0 {
-//                                let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-//                                locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-//                            }
-//                        }
                     } catch {
                         print("❌ Failed to fetch Shopping items: \(error.localizedDescription)")
                     }
                 }
                 .onAppear {
+                    appDelegate.adManager.entitlementManager = entitlementManager
+
                     scheduleDueDateNotifications()
                 }
         }

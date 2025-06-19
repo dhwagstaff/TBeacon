@@ -122,7 +122,7 @@ struct EditableListView: View {
     @State private var isShowingInterstitialAd = false
 
     private static var isRefreshing = false
-    private var userLocationManager: CLLocationManager?
+    // this may be needed for didenterregion and for todomap  private var userLocationManager: CLLocationManager?
         
     let todoRowHeight = 100.0
     
@@ -517,9 +517,9 @@ struct EditableListView: View {
         LocationManager.shared.viewContext = context
         
         // Set up dedicated user location manager
-        let manager = CLLocationManager()
+      // this may be needed for didenterregion and for todomap let manager = CLLocationManager()
         // We'll set the delegate in onAppear to avoid memory leaks
-        self.userLocationManager = manager
+        // this may be needed for didenterregion and for todomap  self.userLocationManager = manager
     }
         
     var body: some View {
@@ -628,9 +628,13 @@ struct EditableListView: View {
             .navigationTitle("")
             .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
                 appDelegate.adManager.lastAdTime = Date()
-                appDelegate.adManager.isShowingRewardedAd = false
             }) {
                 RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Task Beacon")
+            }
+            .sheet(isPresented: $isShowingInterstitialAd, onDismiss: {
+                appDelegate.adManager.lastInterstitialAdTime = Date()
+            }) {
+                InterstitialContentView(navigationTitle: "Task Beacon")
             }
             .fullScreenCover(isPresented: Binding(
                 get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
@@ -669,7 +673,6 @@ struct EditableListView: View {
                 
                 if let item = selectedShoppingItem, let store = selectedStore {
                     // Update the item with store information
-                    
                     item.storeName = storeName
                     item.storeAddress = storeAddress
                     
@@ -691,14 +694,32 @@ struct EditableListView: View {
                             item.emoji = emoji
                         }
                     }
-                                        
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self.refreshDataAndViews()
-                        self.handleStoreAssignment()
-                    }
+                    
+                    // Save to Core Data
+                    //                        do {
+                    //                            try viewContext.save()
+                    //                            print("💾 Successfully saved to Core Data")
+                    //
+                    //                            DispatchQueue.main.async {
+                    //                                // First, fetch fresh data from Core Data
+                    //                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
+                    //                                if let items = try? viewContext.fetch(request) {
+                    //                                    // Update the view model's data
+                    //                                    shoppingListViewModel.shoppingItems = items
+                    //
+                    //                                    // Clear and rebuild the groupings
+                    //                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
+                    //                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
+                    //
+                    //                                    // Force view refresh
+                    //                                    refreshTrigger = UUID()
+                    //                                }
+                    //                            }
+                    //                        } catch {
+                    //                            print("❌ Error saving to Core Data: \(error)")
+                    //                        }
                     
                     // Reset states
-                    showStoreSelectionSheet = false
                     selectedShoppingItem = nil
                     selectedStore = nil
                 }
@@ -710,8 +731,7 @@ struct EditableListView: View {
                                           selectedStore: $selectedStore,
                                           latitude: $latitude,
                                           longitude: $longitude,
-                                          isPreferred: $isPreferred,
-                                          selectedShoppingItem: selectedShoppingItem
+                                          isPreferred: $isPreferred
                 )
             }
             .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
@@ -763,30 +783,21 @@ struct EditableListView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.refreshDataAndViews()
                 }
-                    
+                                
                 for item in shoppingListViewModel.shoppingItems {
-                    // Only monitor shopping items that have an assigned store
-                    if let uid = item.uid,
-                       !(item.storeName?.isEmpty ?? true), // Must have a store name
-                       item.latitude != 0,
-                       item.longitude != 0 {
+                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
                         let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
+                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
                     }
                 }
-                
-//                for item in shoppingListViewModel.shoppingItems {
-//                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
-//                        let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-//                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-//                    }
-//                }
             }
             .onDisappear {
                 print("♻️ Cleaned up resources in EditableListView")
             }
         }
         .onAppear {
+            print("🔍 .onAppear triggered in EditableListView")
+
             setupOnAppear()
             
             checkForRewardedAdTrigger()
@@ -820,16 +831,28 @@ struct EditableListView: View {
     
     func startInterstitialAdTimer() {
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
-            if appDelegate.adManager.canShowInterstitialAd() && !isShowingRewardedAd {
-                appDelegate.adManager.showInterstitialAd()
+            if appDelegate.adManager.canShowInterstitialAd() && !isShowingInterstitialAd && !isShowingRewardedAd {
+                isShowingInterstitialAd = true
                 appDelegate.adManager.lastInterstitialAdTime = Date()
             }
         }
     }
     
     func checkForRewardedAdTrigger() {
-        if shoppingListViewModel.isOverFreeLimit() && appDelegate.adManager.canShowLimitExtensionReward() && !appDelegate.adManager.isShowingRewardedAd {
-            appDelegate.adManager.isShowingRewardedAd = true
+        print("🔍 Checking if should show rewarded ad...")
+        print("Is Premium User: \(entitlementManager.isPremiumUser)")
+        print("Has Monthly Subscription: \(entitlementManager.hasMonthlySubscription)")
+        print("Has Annual Subscription: \(entitlementManager.hasAnnualSubscription)")
+        print("Should Show Rewarded Ad Section: \(shouldShowRewardedAdSection)")
+        print("Is Over Free Limit: \(shoppingListViewModel.isOverFreeLimit())")
+        print("Can Show Limit Extension Reward: \(appDelegate.adManager.canShowLimitExtensionReward())")
+        
+        // Add this debug line:
+        print("�� EntitlementManager instance: \(entitlementManager)")
+        print("�� EntitlementManager.shared instance: \(EntitlementManager.shared)")
+        print("🔍 Are they the same? \(entitlementManager === EntitlementManager.shared)")
+
+        if shoppingListViewModel.isOverFreeLimit() && appDelegate.adManager.canShowAd() && !isShowingRewardedAd {
             isShowingRewardedAd = true
             appDelegate.adManager.lastAdTime = Date()
         }
@@ -923,12 +946,12 @@ struct EditableListView: View {
     // Add this function to EditableListView:
     private func requestLocationIfNeeded() {
         print("🔍 Checking location permissions")
-        let locationManager = CLLocationManager()
+       // let locationManager = CLLocationManager()
         let status = locationManager.authorizationStatus
         
         if status == .notDetermined {
             print("📍 Requesting location permission")
-            locationManager.requestAlwaysAuthorization()
+            locationManager.requestAuthorization()
         } else if status == .denied || status == .restricted {
             print("⚠️ Location permission denied or restricted")
         } else {
@@ -1086,6 +1109,8 @@ struct EditableListView: View {
     
     // Helper function to set up on appear
     private func setupOnAppear() {
+        print("🔍 setupOnAppear() called - starting permission checks")
+
         // Clear any existing store data to avoid defaults
         self.selectedStore = nil
         self.storeName = ""
@@ -1096,13 +1121,19 @@ struct EditableListView: View {
         
         // Check all required permissions
         Task {
+            print("🔍 About to check location permission...")
+
             // Check location permission
             if await permissionManager.checkAndRequestPermission(for: .location) {
+                print("✅ Location permission granted")
+
                 // Set up location manager delegate and request authorization
                 setupUserLocationManager()
                 
                 // Initial direct search with location if available
                 await locationManager.performDirectMapKitSearch()
+            } else {
+                print("❌ Location permission not granted")
             }
             
             // Check notification permission
@@ -1115,10 +1146,6 @@ struct EditableListView: View {
     
     // Setup location manager with proper delegate pattern
     private func setupUserLocationManager() {
-        guard let manager = userLocationManager else { return }
-        
-        manager.delegate = LocationManager.shared
-        
         // Set up delegate
         LocationManager.shared.onLocationUpdate = { coordinate in
             // Update userLocation state and trigger UI update
@@ -1140,7 +1167,7 @@ struct EditableListView: View {
             case .authorizedWhenInUse, .authorizedAlways:
                 print("🔐 Location access granted")
                 // Search now that we have authorization
-                manager.requestLocation() // Request a single location update
+              //  LocationManager.shared.locationManager.requestLocation() // Use shared instance instead of manager
             case .denied, .restricted:
                 print("🔐 Location access denied, using default Utah location")
                 // Fallback to known Utah coordinates instead of San Francisco
@@ -1148,7 +1175,7 @@ struct EditableListView: View {
                 Task { await LocationManager.shared.performDirectMapKitSearch() }
             case .notDetermined:
                 print("🔐 Location access not determined yet, requesting")
-                manager.requestWhenInUseAuthorization()
+                LocationManager.shared.requestAuthorization() // Use shared instance instead of manager
             @unknown default:
                 print("🔐 Unknown location authorization status")
                 // Fallback to known Utah coordinates
@@ -1156,15 +1183,59 @@ struct EditableListView: View {
                 Task { await LocationManager.shared.performDirectMapKitSearch() }
             }
         }
-        
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Lower accuracy is fine for store distances
-        
-        // Request authorization
-        manager.requestWhenInUseAuthorization()
-        
-        // Start updating location
-        manager.startUpdatingLocation()
     }
+    
+//    private func setupUserLocationManager() {
+//        guard let manager = userLocationManager else { return }
+//        
+//        manager.delegate = LocationManager.shared
+//        
+//        // Set up delegate
+//        LocationManager.shared.onLocationUpdate = { coordinate in
+//            // Update userLocation state and trigger UI update
+//            DispatchQueue.main.async {
+//                self.userLocation = coordinate
+//                print("📍 USER LOCATION UPDATED: \(coordinate.latitude), \(coordinate.longitude)")
+//                
+//                // If we haven't found stores yet, try searching now that we have location
+//                if LocationManager.shared.stores.isEmpty == true {
+//                    Task {
+//                        await LocationManager.shared.performDirectMapKitSearch()
+//                    }
+//                }
+//            }
+//        }
+//        
+//        LocationManager.shared.onAuthStatusChange = { status in
+//            switch status {
+//            case .authorizedWhenInUse, .authorizedAlways:
+//                print("🔐 Location access granted")
+//                // Search now that we have authorization
+//                manager.requestLocation() // Request a single location update
+//            case .denied, .restricted:
+//                print("🔐 Location access denied, using default Utah location")
+//                // Fallback to known Utah coordinates instead of San Francisco
+//                self.userLocation = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+//                Task { await LocationManager.shared.performDirectMapKitSearch() }
+//            case .notDetermined:
+//                print("🔐 Location access not determined yet, requesting")
+//                manager.requestAlwaysAuthorization()
+//            @unknown default:
+//                print("🔐 Unknown location authorization status")
+//                // Fallback to known Utah coordinates
+//                self.userLocation = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+//                Task { await LocationManager.shared.performDirectMapKitSearch() }
+//            }
+//        }
+//        
+//        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Lower accuracy is fine for store distances
+//        
+//        // Request authorization
+//        manager.requestAlwaysAuthorization()
+//        
+//        // Start updating location
+//        manager.startUpdatingLocation()
+//    }
     
     private func observeChanges() {
         DispatchQueue.main.async {
@@ -1508,19 +1579,19 @@ struct LoadingOverlay: View {
                     )
                 
                 Text("Loading Stores...")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .font(.title2)  // Increased from headline
+                    .fontWeight(.bold)  // Added bold
                     .foregroundColor(.primary)
                 
                 Text("Finding stores near your location")
-                    .font(.headline)
+                    .font(.headline)  // Increased from subheadline
                     .foregroundColor(.secondary)
             }
-            .padding(30)
+            .padding(30)  // Increased padding
             .background(
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: 20)  // Increased corner radius
                     .fill(Color(.systemBackground))
-                    .shadow(radius: 15)
+                    .shadow(radius: 15)  // Increased shadow
             )
         }
         .transition(.opacity)

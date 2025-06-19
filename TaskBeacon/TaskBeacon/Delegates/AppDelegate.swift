@@ -21,12 +21,25 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
     @Published var adManager = AdManager()
 
     // Entitlement management
-    let entitlementManager = EntitlementManager()
+    let entitlementManager = EntitlementManager.shared
 
     private var hasInitializedLocationManager = false
     private var isConsentGathered = false
 
     var window: UIWindow?
+    
+    override init() {
+        super.init()
+        
+        print("🔍 AppDelegate.init() called")
+        print("🔍 Setting adManager.entitlementManager = \(entitlementManager)")
+
+        // Set the entitlementManager on the adManager
+        adManager.entitlementManager = entitlementManager
+        
+        print("🔍 adManager.entitlementManager set to: \(adManager.entitlementManager)")
+        print("🔍 EntitlementManager.shared.isPremiumUser: \(entitlementManager.isPremiumUser)")
+    }
     
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         if let shortcutItem = options.shortcutItem {

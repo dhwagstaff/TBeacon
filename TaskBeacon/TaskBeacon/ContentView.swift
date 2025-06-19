@@ -27,14 +27,16 @@ struct ContentView: View {
     @State private var todoList: [String] = []
     @State private var showSettings = false
     @State private var selectedProduct: Product? = nil
-    @State private var shouldRefreshView = false // 🔹 Force re-render
-    @State private var hasLoadedProducts = false // Prevent multiple loads
+    @State private var shouldRefreshView = false
+    @State private var hasLoadedProducts = false
     @State private var refresh: Bool = false
     @State private var showFreeVersion: Bool = false
-    @State private var forceRefresh = UUID() // 🔹 New State variable
-    @State private var showSubscriptionScreen: Bool = false // Controls modal visibility
+    @State private var forceRefresh = UUID()
+    @State private var showSubscriptionScreen: Bool = false
     @State private var showPrivacyOptionsAlert = false
     @State private var formErrorDescription: String?
+    @State private var showPremiumCelebration: Bool = false
+    @State private var hasShownPremiumCelebration: Bool = false
     
     private let features: [String] = ["Remove all ads", "Unlimited To-Do & Shopping Items"]
     
@@ -48,19 +50,58 @@ struct ContentView: View {
     @FetchRequest(entity: ToDoItemEntity.entity(), sortDescriptors: []) private var toDoItems: FetchedResults<ToDoItemEntity>
     
     // MARK: - Views
-    private var hasSubscriptionView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "crown.fill")
-                .foregroundStyle(.yellow)
-                .font(Font.system(size: 100))
-            
-            Text("You've Unlocked Premium Access")
-                .font(.system(size: 30.0, weight: .bold))
-                .fontDesign(.rounded)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 30)
+    private var premiumCelebrationBanner: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Image(systemName: "crown.fill")
+                    .foregroundStyle(.yellow)
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Premium Unlocked!")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text(subscriptionTypeMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showPremiumCelebration = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                        .font(.title3)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            )
         }
-        .ignoresSafeArea(.all)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+    
+    // Add this computed property
+    private var subscriptionTypeMessage: String {
+        // Access the current values, not the bindings
+        if entitlementManager.hasMonthlySubscription {
+            return "Monthly Premium Plan"
+        } else if entitlementManager.hasAnnualSubscription {
+            return "Annual Premium Plan"
+        } else {
+            return "Premium Plan"
+        }
     }
     
     init(isAddingToDoItem: Binding<Bool>, isAddingShoppingItem: Binding<Bool>, isUpcomingToDoItems: Binding<Bool>) {
@@ -69,97 +110,64 @@ struct ContentView: View {
         self._isUpcomingToDoItems = isUpcomingToDoItems
 
         // Initialize other properties
-        let context = PersistenceController.shared.container.viewContext
-        let todoRequest = NSFetchRequest<ToDoItemEntity>(entityName: CoreDataEntities.toDoItem.stringValue)
-        let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-        
-        do {
-            let todos = try context.fetch(todoRequest)
-            let shoppingItems = try context.fetch(shoppingRequest)
-            // let allItems = todos + shoppingItems
-        } catch {
-            print("❌ Failed to fetch items: \(error)")
-        }
+//        let context = PersistenceController.shared.container.viewContext
+//        let todoRequest = NSFetchRequest<ToDoItemEntity>(entityName: CoreDataEntities.toDoItem.stringValue)
+//        let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
     }
     
     var body: some View {
         NavigationView {
-            Group {
-                if entitlementManager.isPremiumUser {
-                    AnyView(
-                        VStack {
-                            hasSubscriptionView
-                                .padding()
-                                .background(Color(.systemBackground))
-                            
-                            NavigationView {
-                                if shoppingItems.isEmpty && toDoItems.isEmpty {
-                                    EmptyStateView() // ✅ Show when no items exist
-                                        .environmentObject(todoListViewModel)
-                                        .environment(\.managedObjectContext, viewContext)
-                                } else {
-                                    EditableListView()
-                                        .onAppear { refreshData() }
-                                        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                                            refreshData()
-                                        }
-                                        .environmentObject(LocationManager.shared)
-                                        .environmentObject(todoListViewModel)
-                                        .environment(\.managedObjectContext, viewContext)
-                                }
-                            }
-                            .sheet(isPresented: $isAddingToDoItem) {
-                                AddEditToDoItemView(toDoItem: nil,
-                                                    showAddTodoItem: .constant(true),
-                                                    isShowingAnySheet: .constant(true),
-                                                    navigateToEditableList: .constant(false),
-                                                    isEditingExistingItem: false)
-                            }
-                            .sheet(isPresented: $isAddingShoppingItem) {
-                                AddEditShoppingItemView(
-                                    navigateToEditableList: .constant(false),
-                                    showAddShoppingItem: .constant(true),
-                                    isShowingAnySheet: .constant(false),
-                                    isEditingExistingItem: false,
-                                    shoppingItem: nil
-                                )
-                            }
-                            .sheet(isPresented: $isUpcomingToDoItems) {
-                                EditableListView()
-                                    .environmentObject(LocationManager.shared)
-                                    .environmentObject(shoppingListViewModel)
-                                    .environmentObject(todoListViewModel)
-                                    .environment(\.managedObjectContext, viewContext)
-                            }
-                        }
+            VStack(spacing: 0) {
+                // Show the premium banner if the user is premium
+                if showPremiumCelebration {
+                    premiumCelebrationBanner
+                        .padding()
                         .background(Color(.systemBackground))
-                    )
-                } else {
-                    AnyView(
-                        VStack {
-                            if shoppingItems.isEmpty && toDoItems.isEmpty {
-                                EmptyStateView() // ✅ Show when no items exist
-                                    .environmentObject(todoListViewModel)
-                                    .environment(\.managedObjectContext, viewContext)
-                            } else {
-                                EditableListView()
-                                    .onAppear { refreshData() }
-                                    .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                                        refreshData()
-                                    }
-                                    .environmentObject(LocationManager.shared)
-                                    .environmentObject(todoListViewModel)
-                                    .environment(\.managedObjectContext, viewContext)
-                            }
-                        }
-                        .background(Color(.systemBackground))
-                        .alert(isPresented: $showPrivacyOptionsAlert) {
-                            Alert(title: Text(formErrorDescription ?? "Error"),
-                                    message: Text("Please try again later.")
-                            )
-                        }
-                    )
                 }
+                
+                if shoppingItems.isEmpty && toDoItems.isEmpty {
+                    EmptyStateView() // ✅ Show when no items exist
+                        .environmentObject(todoListViewModel)
+                        .environment(\.managedObjectContext, viewContext)
+                } else {
+                    EditableListView()
+                        .onAppear { refreshData() }
+                        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                            refreshData()
+                        }
+                        .environmentObject(LocationManager.shared)
+                        .environmentObject(todoListViewModel)
+                        .environment(\.managedObjectContext, viewContext)
+                }
+            }
+            .background(Color(.systemBackground))
+            .alert(isPresented: $showPrivacyOptionsAlert) {
+                Alert(title: Text(formErrorDescription ?? "Error"),
+                        message: Text("Please try again later.")
+                )
+            }
+            .sheet(isPresented: $isAddingToDoItem) {
+                AddEditToDoItemView(toDoItem: nil,
+                                    showAddTodoItem: .constant(true),
+                                    isShowingAnySheet: .constant(true),
+                                    navigateToEditableList: .constant(false),
+                                    isEditingExistingItem: false)
+            }
+            .sheet(isPresented: $isAddingShoppingItem) {
+                AddEditShoppingItemView(
+                    navigateToEditableList: .constant(false),
+                    showAddShoppingItem: .constant(true),
+                    isShowingAnySheet: .constant(false),
+                    isEditingExistingItem: false,
+                    shoppingItem: nil
+                )
+            }
+            .sheet(isPresented: $isUpcomingToDoItems) {
+                EditableListView()
+                    .environmentObject(LocationManager.shared)
+                    .environmentObject(shoppingListViewModel)
+                    .environmentObject(todoListViewModel)
+                    .environment(\.managedObjectContext, viewContext)
             }
         }
         .fullScreenCover(isPresented: $showSubscriptionScreen, onDismiss: {
@@ -170,14 +178,35 @@ struct ContentView: View {
                 .environmentObject(subscriptionsManager)
         }
         .onAppear {
-            checkSubscriptionStatus() // ✅ Ensure correct UI state on app launch
-            
-            Task {
-                await subscriptionsManager.restorePurchases()
-            }
+            checkSubscriptionStatus()
+            checkForPremiumCelebration()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             ATTrackingManager.requestTrackingAuthorization(completionHandler: { status in })
+        }
+        .onChange(of: entitlementManager.isPremiumUser) {
+            checkForPremiumCelebration()
+        }
+    }
+    
+    private func checkForPremiumCelebration() {
+        // Check if user just became premium and hasn't seen celebration yet
+        if entitlementManager.isPremiumUser && !hasShownPremiumCelebration {
+            showPremiumCelebrationBanner()
+        }
+    }
+
+    private func showPremiumCelebrationBanner() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            showPremiumCelebration = true
+            hasShownPremiumCelebration = true
+        }
+        
+        // Auto-dismiss after 5 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showPremiumCelebration = false
+            }
         }
     }
     
