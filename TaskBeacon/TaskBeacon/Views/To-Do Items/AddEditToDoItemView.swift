@@ -18,6 +18,7 @@ struct AddEditToDoItemView: View {
     @EnvironmentObject private var dataUpdateManager: DataUpdateManager
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var viewModel: ToDoListViewModel
+    @EnvironmentObject var shoppingListViewModel: ShoppingListViewModel
     @EnvironmentObject var subscriptionsManager: SubscriptionsManager
     @EnvironmentObject var entitlementManager: EntitlementManager
     
@@ -69,10 +70,6 @@ struct AddEditToDoItemView: View {
          navigateToEditableList: Binding<Bool>,
          isEditingExistingItem: Bool) {
         self.isEditingExistingItem = isEditingExistingItem
-
-        // Initialize Entitlement and Subscription Managers
-//        let entitlementManager = EntitlementManager.shared
-//        let subscriptionsManager = SubscriptionsManager(entitlementManager: entitlementManager)
 
         self._showAddTodoItem = showAddTodoItem
         self._isShowingAnySheet = isShowingAnySheet
@@ -215,6 +212,7 @@ struct AddEditToDoItemView: View {
                             ),
                             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                         )),
+                        mapIsForShoppingItem: false,
                         onLocationSelected: { coordinate, name in
                             latitude = coordinate.latitude
                             longitude = coordinate.longitude
@@ -223,6 +221,7 @@ struct AddEditToDoItemView: View {
                         }
                     )
                     .environmentObject(locationManager)
+                    .environmentObject(shoppingListViewModel) // ADD THIS LINE
                 }
                 .onChange(of: viewModel.selectedLocationAddress) {
                     if !viewModel.selectedLocationName.isEmpty {

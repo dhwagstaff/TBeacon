@@ -40,8 +40,8 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
 
     var ignoredFirstEntryRegionIDs: Set<String> = []
     var regionIDToItemMap: [String: NSManagedObject] = [:]
+    var storeRegionIDToItemsMap: [String: [NSManagedObject]] = [:]
     
-    // Add a cache dictionary
     private var storeCategoryCache: [String: String] = [:]
     private var storeOptionCache: [String: StoreOption] = [:]
     
@@ -136,19 +136,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                 }
             }
         }
-        
-//        for item in items {
-//            if let uid = item.value(forKey: "uid") as? String {
-//                let latitude = item.value(forKey: "latitude") as? Double ?? 0.0
-//                let longitude = item.value(forKey: "longitude") as? Double ?? 0.0
-//                
-//                print("\n\nitem ::: \(item)\n\n")
-//                print("this lat ::: \(latitude) ::: \(longitude)")
-//                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-//
-//                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
-//            }
-//        }
     }
     
     private func shouldMonitorItem(_ item: NSManagedObject, latitude: Double, longitude: Double) -> Bool {
@@ -743,43 +730,90 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         }
     }
     
+    private func storeHasIncompleteItems(storeName: String, storeAddress: String) -> Bool {
+        guard let context = viewContext else { return false }
+        
+        let request: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@ AND isCompleted == false",
+                                       storeName, storeAddress)
+        
+        do {
+            let count = try context.count(for: request)
+            return count > 0
+        } catch {
+            print("❌ Error checking incomplete items for store: \(error)")
+            return false
+        }
+    }
+    
+    private func removeMonitoringForStore(storeName: String, storeAddress: String) {
+        let storeIdentifier = "\(storeName)_\(storeAddress)"
+        
+        print("🗑️ Attempting to remove monitoring for store: \(storeName)")
+
+        // Find and stop monitoring the region
+        for region in locationManager.monitoredRegions {
+            if region.identifier == storeIdentifier {
+                locationManager.stopMonitoring(for: region)
+                print("✅ Successfully stopped monitoring store: \(storeName)")
+                break
+            }
+        }
+        
+        // Remove from our tracking maps
+        storeRegionIDToItemsMap.removeValue(forKey: storeIdentifier)
+        print("🗂️ Removed store from tracking maps: \(storeName)")
+    }
+    
     func loadAndMonitorAllGeofences(from context: NSManagedObjectContext) {
-        print("📍 Starting to load and monitor geofences...")
+        print("📍 Re-loading and monitoring all geofences...")
 
-        // Store the context for future use
         self.viewContext = context
-
-        // Clear existing geofences
+        
         clearAllGeofences()
 
+        // --- To-Do Items (one region per item) ---
+        let todoRequest = NSFetchRequest<NSManagedObject>(entityName: "ToDoItemEntity")
+        todoRequest.predicate = NSPredicate(format: "latitude != 0 AND longitude != 0 AND addressOrLocationName != '' AND addressOrLocationName != nil")
         do {
-            // Fetch ToDo Items with locations
-            let todoRequest = NSFetchRequest<NSManagedObject>(entityName: "ToDoItemEntity")
-            todoRequest.predicate = NSPredicate(format: "latitude != 0 AND longitude != 0")
             let todoItems = try context.fetch(todoRequest)
-            
-            // Fetch Shopping Items with locations
-            let shoppingRequest = NSFetchRequest<NSManagedObject>(entityName: "ShoppingItemEntity")
-            shoppingRequest.predicate = NSPredicate(format: "latitude != 0 AND longitude != 0")
-            let shoppingItems = try context.fetch(shoppingRequest)
-            
-            // Process all items
-            for item in todoItems + shoppingItems {
-                guard let uid = item.value(forKey: "uid") as? String,
-                      let latitude = item.value(forKey: "latitude") as? Double,
-                      let longitude = item.value(forKey: "longitude") as? Double else { continue }
-                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                
-                monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
-                
-               // regionIDToItemMap[uid] = item
+            for item in todoItems {
+                if let uid = item.value(forKey: "uid") as? String,
+                   let latitude = item.value(forKey: "latitude") as? Double,
+                   let longitude = item.value(forKey: "longitude") as? Double {
+                    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                    monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
+                }
             }
         } catch {
-            print("❌ Failed to load geofences: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            print("❌ Failed to fetch ToDo items for geofencing: \(error.localizedDescription)")
         }
+
+        // --- Shopping Items (one region per unique store) ---
+        let shoppingRequest = NSFetchRequest<NSManagedObject>(entityName: "ShoppingItemEntity")
+        shoppingRequest.predicate = NSPredicate(format: "latitude != 0 AND longitude != 0 AND storeName != '' AND storeName != nil")
+        do {
+            let allShoppingItems = try context.fetch(shoppingRequest)
+            let stores = Dictionary(grouping: allShoppingItems) { (item) -> String in
+                let storeName = item.value(forKey: "storeName") as? String ?? "Unknown Store"
+                let latitude = item.value(forKey: "latitude") as? Double ?? 0.0
+                let longitude = item.value(forKey: "longitude") as? Double ?? 0.0
+                return "\(storeName)|\(latitude)|\(longitude)"
+            }
+
+            for (storeIdentifier, itemsInStore) in stores {
+                if let firstItem = itemsInStore.first,
+                   let latitude = firstItem.value(forKey: "latitude") as? Double,
+                   let longitude = firstItem.value(forKey: "longitude") as? Double {
+                    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                    monitorStoreRegion(center: coordinate, identifier: storeIdentifier, items: itemsInStore)
+                }
+            }
+        } catch {
+            print("❌ Failed to fetch Shopping items for geofencing: \(error.localizedDescription)")
+        }
+        
+        print("✅ Geofence loading complete. Monitoring \(locationManager.monitoredRegions.count) regions.")
     }
 
     // Helper function to clear geofences
@@ -789,6 +823,11 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
           //  print("🛑 Stopped monitoring region: \(region.identifier)")
         }
       //  print("✅ Cleared all existing geofences.")
+        
+        regionIDToItemMap.removeAll()
+        storeRegionIDToItemsMap.removeAll()
+        
+        print("🛑 Cleared all existing geofences and tracking maps.")
     }
     
     func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String, item: NSManagedObject) {
@@ -807,10 +846,7 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         }
 
         if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-            let maxDistance = locationManager.maximumRegionMonitoringDistance
-            
-            let region = CLCircularRegion(center: center,
-                                          radius: 500.0/*maxDistance*/, identifier: identifier)
+            let region = CLCircularRegion(center: center, radius: 500.0, identifier: identifier)
             region.notifyOnEntry = true
             region.notifyOnExit = true
        
@@ -825,6 +861,77 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             print("notifiedRegionIDs ::: \(self.notifiedRegionIDs)")
         }
     }
+    
+    private func monitorStoreRegion(center: CLLocationCoordinate2D, identifier: String, items: [NSManagedObject]) {
+        if isRegionMonitored(identifier) {
+            print("ℹ️ Store region already monitored: \(identifier)")
+            return
+        }
+
+        // Check if any items are incomplete
+        let hasIncompleteItems = items.contains { item in
+            if let isCompleted = item.value(forKey: "isCompleted") as? Bool {
+                return !isCompleted
+            }
+            return true // Assume incomplete if we can't determine
+        }
+        
+        if !hasIncompleteItems {
+            print("⚠️ Store \(identifier) has no incomplete items, skipping monitoring")
+            return
+        }
+
+        if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
+            let region = CLCircularRegion(center: center, radius: 500.0, identifier: identifier)
+            region.notifyOnEntry = true
+            region.notifyOnExit = false
+            
+            locationManager.startMonitoring(for: region)
+            print("✅ Started monitoring STORE region: \(identifier) with \(items.count) items")
+            self.storeRegionIDToItemsMap[identifier] = items
+        }
+    }
+    
+    func updateStoreMonitoring(for storeName: String, storeAddress: String) {
+        guard let context = viewContext else { return }
+        
+        let hasIncompleteItems = storeHasIncompleteItems(storeName: storeName, storeAddress: storeAddress)
+        let storeIdentifier = "\(storeName)_\(storeAddress)"
+        
+        print("🔄 Updating monitoring for store: \(storeName)")
+        print("📍 Store has incomplete items: \(hasIncompleteItems)")
+        
+        if hasIncompleteItems {
+            // Check if we're already monitoring this store
+            let isCurrentlyMonitored = locationManager.monitoredRegions.contains { $0.identifier == storeIdentifier }
+            
+            if !isCurrentlyMonitored {
+                print("✅ Adding monitoring for store: \(storeName)")
+
+                // Get the store's location and items
+                let request: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@", storeName, storeAddress)
+                
+                do {
+                    let items = try context.fetch(request)
+                    if let firstItem = items.first {
+                        let coordinate = CLLocationCoordinate2D(
+                            latitude: firstItem.latitude,
+                            longitude: firstItem.longitude
+                        )
+                        monitorStoreRegion(center: coordinate, identifier: storeIdentifier, items: items)
+                    }
+                } catch {
+                    print("❌ Error fetching items for store monitoring update: \(error)")
+                }
+            }
+        } else {
+            // No incomplete items, remove monitoring
+            print("❌ Removing monitoring for store: \(storeName) - all items completed")
+
+            removeMonitoringForStore(storeName: storeName, storeAddress: storeAddress)
+        }
+    }
 
     // Helper to check if the region is monitored
     func isRegionMonitored(_ identifier: String) -> Bool {
@@ -832,9 +939,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-     //   print("❌ Monitoring failed for region: \(region?.identifier ?? "unknown")")
-     //   print("Error: \(error.localizedDescription)")
-        
         // Attempt to restart monitoring if it failed
         if let region = region {
             locationManager.startMonitoring(for: region)
@@ -1102,64 +1206,64 @@ extension LocationManager: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        print("DID ENTER REGION ::: \(region.identifier)")
-        print("Region state in didEnterRegion: \(region.identifier)")
+        let regionIdentifier = region.identifier
+        let content = UNMutableNotificationContent()
+        var itemsForNotification: [NSManagedObject] = []
         
-        // In didEnterRegion:
-        guard let item = regionIDToItemMap[region.identifier] else {
-            print("❌ No item found for region: \(region.identifier)")
+        // Case 1: The entered region is for a To-Do Item
+        if let todoItem = regionIDToItemMap[regionIdentifier] {
+            itemsForNotification.append(todoItem)
+            content.title = "To-Do Reminder"
+            if let locationName = todoItem.value(forKey: "addressOrLocationName") as? String {
+                 content.subtitle = "You're near \(locationName)"
+            }
+        }
+        // Case 2: The entered region is for a Store
+        else if let shoppingItems = storeRegionIDToItemsMap[regionIdentifier] {
+            itemsForNotification = shoppingItems
+            content.title = "Shopping Reminder"
+            if let storeName = shoppingItems.first?.value(forKey: "storeName") as? String {
+                content.subtitle = "You're near \(storeName)"
+            }
+        }
+        // Case 3: Unrecognized region
+        else {
+            print("⚠️ Could not find matching data for region: \(regionIdentifier)")
             return
         }
 
-        // Get the item's uid
-        if let itemUid = item.value(forKey: "uid") as? String {
-            // Check if this item's uid is in notifiedRegionIDs
-            if self.notifiedRegionIDs.contains(itemUid) {
-                // Create notification content
-                let content = UNMutableNotificationContent()
-                
-                // Get all items for this location
-                let items = regionIDToItemMap.filter { $0.key == itemUid }
-                    .map { $0.value }
-                    .prefix(5)  // Limit to 5 items
-                
-                let itemNames = items.compactMap { item -> String? in
-                    if item.entity.name == "ToDoItemEntity" {
-                        return item.value(forKey: "Task") as? String
-                    } else if item.entity.name == "ShoppingItemEntity" {
-                        return item.value(forKey: "name") as? String
-                    }
-                    return nil
-                }
-                
-                if item.entity.name == "ToDoItemEntity" {
-                    content.title = "To-Do Reminder"
-                    if itemNames.count > 1 {
-                        content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete:\n• " + itemNames.joined(separator: "\n• ")
-                    } else if let firstItem = itemNames.first {
-                        content.body = "You're near \(item.value(forKey: "addressOrLocationName") as? String ?? "your task location")! Don't forget to complete: \(firstItem)"
-                    }
-                } else if item.entity.name == "ShoppingItemEntity" {
-                    content.title = "Shopping Reminder"
-                    if itemNames.count > 1 {
-                        content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy:\n• " + itemNames.joined(separator: "\n• ")
-                    } else if let firstItem = itemNames.first {
-                        content.body = "You're near \(item.value(forKey: "storeName") as? String ?? "a store")! Don't forget to buy: \(firstItem)"
-                    }
-                }
-                
-                content.sound = .default
-                
-                // Create and schedule the notification
-                let request = UNNotificationRequest(identifier: region.identifier, content: content, trigger: nil)
-                
-                UNUserNotificationCenter.current().add(request) { error in
-                    if let error = error {
-                        print("❌ Failed to schedule notification: \(error.localizedDescription)")
-                        self.errorMessage = error.localizedDescription
-                        self.showErrorAlert = true
-                    }
-                }
+        guard !itemsForNotification.isEmpty else { return }
+
+        // Build the notification body from all relevant items
+        let itemNames = itemsForNotification.compactMap { item -> String? in
+            if item.entity.name == "ToDoItemEntity" {
+                return item.value(forKey: "task") as? String
+            } else if item.entity.name == "ShoppingItemEntity" {
+                return item.value(forKey: "name") as? String
+            }
+            return nil
+        }
+        
+        if itemNames.isEmpty {
+            content.body = "You have reminders here!"
+        } else if itemNames.count == 1 {
+            content.body = "Don't forget: \(itemNames.first!)"
+        } else {
+            // Create a bulleted list for the notification body
+            let bodyString = itemNames.map { "• \($0)" }.joined(separator: "\n")
+            content.body = "Don't forget:\n\(bodyString)"
+        }
+
+        content.sound = .default
+        
+        // Use a unique identifier to ensure the notification is always delivered
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to schedule notification: \(error.localizedDescription)")
+            } else {
+                print("✅ Notification scheduled for region \(regionIdentifier)")
             }
         }
     }

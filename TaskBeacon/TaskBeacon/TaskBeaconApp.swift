@@ -114,19 +114,10 @@ struct TaskBeaconApp: App {
                     entitlementManager.forceRefreshSubscriptionStatus()
                     
                     do {
-                        let shoppingItems: [ShoppingItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.shoppingItem.stringValue)
-                        
-                        for item in shoppingItems {
-                            // Only monitor shopping items that have an assigned store
-                            if !(item.storeName?.isEmpty ?? true),
-                               item.latitude != 0,
-                               item.longitude != 0 {
-                                let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                                locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-                            }
-                        }
+                        let context = CoreDataManager.shared().viewContext
+                        locationManager.loadAndMonitorAllGeofences(from: context)
                     } catch {
-                        print("❌ Failed to fetch Shopping items: \(error.localizedDescription)")
+                        print("❌ Failed to load geofences: \(error.localizedDescription)")
                     }
                 }
                 .onAppear {

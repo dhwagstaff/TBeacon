@@ -189,8 +189,9 @@ class AdManager: ObservableObject {
         }
         
         print("🔄 Loading new interstitial ad...")
+        
         Task {
-            await interstitialViewModel?.loadAd()
+            interstitialViewModel?.loadAndShowAd { }
         }
     }
 

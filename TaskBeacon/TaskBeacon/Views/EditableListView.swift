@@ -30,6 +30,12 @@ enum ToDoRow: Identifiable {
     }
 }
 
+enum TodoFilterType {
+    case category
+    case priority
+    case none
+}
+
 // Helper view to force list refreshes when data changes
 // This addresses SwiftUI's tendency to cache views and not update when collection data changes
 struct ListReloadWrapper<Content: View>: View {
@@ -44,12 +50,6 @@ struct ListReloadWrapper<Content: View>: View {
     var body: some View {
         content().id(id)
     }
-}
-
-enum TodoFilterType {
-    case category
-    case priority
-    case none
 }
 
 struct EditableListView: View {
@@ -634,7 +634,7 @@ struct EditableListView: View {
             .sheet(isPresented: $isShowingInterstitialAd, onDismiss: {
                 appDelegate.adManager.lastInterstitialAdTime = Date()
             }) {
-                InterstitialContentView(navigationTitle: "Task Beacon")
+                InterstitialContentView(isPresented: $isShowingInterstitialAd, navigationTitle: "Task Beacon")
             }
             .fullScreenCover(isPresented: Binding(
                 get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
@@ -694,30 +694,6 @@ struct EditableListView: View {
                             item.emoji = emoji
                         }
                     }
-                    
-                    // Save to Core Data
-                    //                        do {
-                    //                            try viewContext.save()
-                    //                            print("💾 Successfully saved to Core Data")
-                    //
-                    //                            DispatchQueue.main.async {
-                    //                                // First, fetch fresh data from Core Data
-                    //                                let request = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
-                    //                                if let items = try? viewContext.fetch(request) {
-                    //                                    // Update the view model's data
-                    //                                    shoppingListViewModel.shoppingItems = items
-                    //
-                    //                                    // Clear and rebuild the groupings
-                    //                                    shoppingListViewModel.groupedItemsByStoreAndCategory.removeAll()
-                    //                                    shoppingListViewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
-                    //
-                    //                                    // Force view refresh
-                    //                                    refreshTrigger = UUID()
-                    //                                }
-                    //                            }
-                    //                        } catch {
-                    //                            print("❌ Error saving to Core Data: \(error)")
-                    //                        }
                     
                     // Reset states
                     selectedShoppingItem = nil
@@ -783,13 +759,15 @@ struct EditableListView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.refreshDataAndViews()
                 }
-                                
-                for item in shoppingListViewModel.shoppingItems {
-                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
-                        let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-                    }
-                }
+                             
+                locationManager.loadAndMonitorAllGeofences(from: viewContext)
+                
+//                for item in shoppingListViewModel.shoppingItems {
+//                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
+//                        let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
+//                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
+//                    }
+//                }
             }
             .onDisappear {
                 print("♻️ Cleaned up resources in EditableListView")
@@ -832,10 +810,31 @@ struct EditableListView: View {
     func startInterstitialAdTimer() {
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             if appDelegate.adManager.canShowInterstitialAd() && !isShowingInterstitialAd && !isShowingRewardedAd {
-                isShowingInterstitialAd = true
-                appDelegate.adManager.lastInterstitialAdTime = Date()
+                preloadAndShowInterstitialAd()
             }
         }
+    }
+    
+    private func preloadAndShowInterstitialAd() {
+        // Create a temporary view model to test if ad can be loaded
+        let tempViewModel = InterstitialViewModel()
+        
+        tempViewModel.loadAndShowAd(
+            onDismissed: {
+                // Ad was dismissed normally
+            },
+            onAdReady: {
+                // Ad is ready, now show the sheet
+                DispatchQueue.main.async {
+                    self.isShowingInterstitialAd = true
+                    self.appDelegate.adManager.lastInterstitialAdTime = Date()
+                }
+            },
+            onAdFailed: {
+                // Ad failed to load, don't show the sheet
+                print("Interstitial ad failed to load, not showing sheet")
+            }
+        )
     }
     
     func checkForRewardedAdTrigger() {
@@ -1184,58 +1183,6 @@ struct EditableListView: View {
             }
         }
     }
-    
-//    private func setupUserLocationManager() {
-//        guard let manager = userLocationManager else { return }
-//        
-//        manager.delegate = LocationManager.shared
-//        
-//        // Set up delegate
-//        LocationManager.shared.onLocationUpdate = { coordinate in
-//            // Update userLocation state and trigger UI update
-//            DispatchQueue.main.async {
-//                self.userLocation = coordinate
-//                print("📍 USER LOCATION UPDATED: \(coordinate.latitude), \(coordinate.longitude)")
-//                
-//                // If we haven't found stores yet, try searching now that we have location
-//                if LocationManager.shared.stores.isEmpty == true {
-//                    Task {
-//                        await LocationManager.shared.performDirectMapKitSearch()
-//                    }
-//                }
-//            }
-//        }
-//        
-//        LocationManager.shared.onAuthStatusChange = { status in
-//            switch status {
-//            case .authorizedWhenInUse, .authorizedAlways:
-//                print("🔐 Location access granted")
-//                // Search now that we have authorization
-//                manager.requestLocation() // Request a single location update
-//            case .denied, .restricted:
-//                print("🔐 Location access denied, using default Utah location")
-//                // Fallback to known Utah coordinates instead of San Francisco
-//                self.userLocation = CLLocationCoordinate2D(latitude: 0, longitude: 0)
-//                Task { await LocationManager.shared.performDirectMapKitSearch() }
-//            case .notDetermined:
-//                print("🔐 Location access not determined yet, requesting")
-//                manager.requestAlwaysAuthorization()
-//            @unknown default:
-//                print("🔐 Unknown location authorization status")
-//                // Fallback to known Utah coordinates
-//                self.userLocation = CLLocationCoordinate2D(latitude: 0, longitude: 0)
-//                Task { await LocationManager.shared.performDirectMapKitSearch() }
-//            }
-//        }
-//        
-//        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Lower accuracy is fine for store distances
-//        
-//        // Request authorization
-//        manager.requestAlwaysAuthorization()
-//        
-//        // Start updating location
-//        manager.startUpdatingLocation()
-//    }
     
     private func observeChanges() {
         DispatchQueue.main.async {

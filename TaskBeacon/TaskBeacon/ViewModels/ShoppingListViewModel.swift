@@ -445,18 +445,8 @@ class ShoppingListViewModel: ListsViewModel {
         }
         
         // Save the item to Core Data
-//        Task {
-//            await saveShoppingItemToCoreData(item: item)
-//        }
-        
-        if !completed {
-            if let locationIdentifier = item.value(forKey: "uid") as? String {
-                locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), identifier: locationIdentifier, item: item)
-            }
-        } else {
-            if let locationIdentifier = item.value(forKey: "uid") as? String {
-                locationManager.checkAndUpdateRegionMonitoring(for: locationIdentifier)
-            }
+        Task {
+            await saveShoppingItemToCoreData(item: item)
         }
                         
         objectWillChange.send()
@@ -766,6 +756,8 @@ class ShoppingListViewModel: ListsViewModel {
             try await MainActor.run {
                 try viewContext.save()
             }
+            
+            locationManager.loadAndMonitorAllGeofences(from: viewContext)
             
             // Fetch all items to update the view model
             let saved: [ShoppingItemEntity] = try await CoreDataManager.shared().fetch(entityName: CoreDataEntities.shoppingItem.stringValue)
