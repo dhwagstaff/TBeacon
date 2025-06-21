@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var formErrorDescription: String = ""
     @State private var showPrivacyOptionsAlert: Bool = false
     @State private var isPrivacyOptionsButtonDisabled: Bool = false
+    @State private var showHelpView = false
 
     var radiusDisplay: String {
         let radiusMeters = UserDefaults.standard.double(forKey: "geofenceRadius")
@@ -40,6 +41,15 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section("Support") {
+                    Button(action: {
+                        showHelpView = true
+                    }) {
+                        Label("Help & Guide", systemImage: "questionmark.circle.fill")
+                            .foregroundColor(.blue)
+                    }
+                }
+                
                 Section(header: Text("Subscription")) {
                     let hasPremiumSubscription = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ||
                                                 subscriptionsManager.purchasedProductIDs.contains("PMA_TBPA_25")
@@ -90,49 +100,6 @@ struct SettingsView: View {
                         .foregroundColor(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
                     }
                 }
-                
-//                Section(header: Text("Subscription")) {
-//                    if subscriptionsManager.purchasedProductIDs.contains("com.pocketmeapps.taskbeacon.premium") {
-//                        Text("✅ You have Task Beacon Premium!")
-//                            .foregroundColor(.green)
-//                            .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
-//
-//                        Button("Manage Subscription") {
-//                            openAppStoreSubscriptionManagement()
-//                        }
-//                        .foregroundColor(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
-//                    } else {
-//                        if !subscriptionsManager.products.isEmpty {
-//                            ForEach(subscriptionsManager.products, id: \.id) { product in
-//                                Button(action: {
-//                                    Task {
-//                                        await subscriptionsManager.buyProduct(product)
-//                                    }
-//                                }) {
-//                                    Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
-//                                }
-//                                .buttonStyle(.borderedProminent)
-//                                .tint(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
-//                                .frame(maxWidth: .infinity)
-//                            }
-//                        } else {
-//                            ProgressView("Loading purchase options...")
-//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
-//                                .onAppear {
-//                                    Task {
-//                                        await subscriptionsManager.loadProducts()
-//                                    }
-//                                }
-//                        }
-//
-//                        Button("Restore Purchases") {
-//                            Task {
-//                                await subscriptionsManager.restorePurchases()
-//                            }
-//                        }
-//                        .foregroundColor(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)
-//                    }
-//                }
 
                 // 🔹 Appearance
                 Section(header: Text("Appearance")) {
@@ -284,6 +251,9 @@ struct SettingsView: View {
                         .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
                 }
             }
+        }
+        .sheet(isPresented: $showHelpView) {
+            HelperView()
         }
         .onAppear {
             // Update permission statuses when view appears

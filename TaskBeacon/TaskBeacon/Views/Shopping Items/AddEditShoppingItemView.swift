@@ -45,6 +45,7 @@ struct AddEditShoppingItemView: View {
     @State private var selectedStoreFilter: String = Constants.allStores
     @State private var hasLoadedProducts = false
     @State private var isShowingRewardedAd = false
+    @State private var showHelpView = false
     @State private var mapRegion: MKCoordinateRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -232,6 +233,19 @@ struct AddEditShoppingItemView: View {
                     .environmentObject(subscriptionsManager)
                     .environmentObject(entitlementManager)
             }
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    showHelpView = true
+                }) {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .sheet(isPresented: $showHelpView) {
+            HelperView()
         }
     }
 

@@ -43,7 +43,8 @@ struct AddEditToDoItemView: View {
     @State private var selectedLocation: CLLocationCoordinate2D?
     @State private var selectedPlacemark: MKPlacemark?
     @State private var isShowingRewardedAd = false
-    
+    @State private var showHelpView = false
+
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
     @Binding var navigateToEditableList: Bool
@@ -262,6 +263,19 @@ struct AddEditToDoItemView: View {
                     }
                 }
             }
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    showHelpView = true
+                }) {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .sheet(isPresented: $showHelpView) {
+            HelperView()
         }
     }
 

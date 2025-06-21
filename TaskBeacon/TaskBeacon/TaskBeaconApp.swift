@@ -16,16 +16,15 @@ import UserNotifications
 @main
 struct TaskBeaconApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
-   // @EnvironmentObject var entitlementManager: EntitlementManager
-    
+            
     @Environment(\.scenePhase) var phase
     
     @State private var quickAction: String?
     @State private var isAddingToDoItem = false
     @State private var isAddingShoppingItem = false
     @State private var isUpcomingToDoItems = false
-    
+    @State private var showOnboarding = false
+
     let persistenceController = PersistenceController.shared
     
     @StateObject private var locationManager: LocationManager
@@ -40,7 +39,8 @@ struct TaskBeaconApp: App {
     @AppStorage("enableNotifications") private var enableNotifications: Bool = true
     @AppStorage("notificationSound") private var notificationSound: String = "Default"
     @AppStorage("geofenceRadius") private var geofenceRadius: Double = 804.67
-    
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     init() {
         _shoppingListViewModel = StateObject(wrappedValue: ShoppingListViewModel(
             context: PersistenceController.shared.container.viewContext, isEditingExistingItem: false))
@@ -121,9 +121,16 @@ struct TaskBeaconApp: App {
                     }
                 }
                 .onAppear {
+                    if !hasCompletedOnboarding {
+                        showOnboarding = true
+                    }
+
                     appDelegate.adManager.entitlementManager = entitlementManager
 
                     scheduleDueDateNotifications()
+                }
+                .sheet(isPresented: $showOnboarding) {
+                    OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
                 }
         }
     }

@@ -120,6 +120,7 @@ struct EditableListView: View {
     @State private var hasCancelledAd = false
     @State private var isShowingRewardedAd = false
     @State private var isShowingInterstitialAd = false
+    @State private var showHelpView = false
 
     private static var isRefreshing = false
     // this may be needed for didenterregion and for todomap  private var userLocationManager: CLLocationManager?
@@ -567,6 +568,14 @@ struct EditableListView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack {
                         Button(action: {
+                            showHelpView = true
+                        }) {
+                            Image(systemName: "questionmark.circle")
+                                .imageScale(.large)
+                                .foregroundColor(.blue)
+                        }
+                        
+                        Button(action: {
                             Task {
                                 if await PermissionManager.shared.checkAndRequestPermission(for: .camera) {
                                     isScanning = true
@@ -626,6 +635,9 @@ struct EditableListView: View {
             }
             .background(Color(.systemBackground))
             .navigationTitle("")
+            .sheet(isPresented: $showHelpView) {
+                HelperView()
+            }
             .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
                 appDelegate.adManager.lastAdTime = Date()
             }) {
