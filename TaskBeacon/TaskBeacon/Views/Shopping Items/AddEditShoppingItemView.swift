@@ -199,34 +199,63 @@ struct AddEditShoppingItemView: View {
             .sheet(isPresented: $showStoreSelection, onDismiss: {
                 isEditingText = false
             }) {
-                // Create a temporary wrapper view that forces store load on appear
-                ZStack {
-                    Color.clear.onAppear {
-                        print("Store sheet appearing, force loading fresh stores...")
-                        // Force refresh any state before loading real view
-                        Task {
-                            // Force refresh stores when presenting view
-                            if self.locationManager.stores.isEmpty {
-                                await self.locationManager.performDirectMapKitSearch()
-                            }
+                ToDoMapView(
+                        cameraPosition: .region(MKCoordinateRegion(
+                            center: CLLocationCoordinate2D(
+                                latitude: latitude ?? 0.0,
+                                longitude: longitude ?? 0.0
+                            ),
+                            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                        )),
+                        mapIsForShoppingItem: true,  // Changed to true for shopping items
+                        onLocationSelected: { coordinate, name in
+                            latitude = coordinate.latitude
+                            longitude = coordinate.longitude
+                            storeName = name
                             
-                            // Trigger a state update to force refresh
-                            await MainActor.run {
-                                self.forceRefresh.toggle()
-                            }
+                            // Format address for display
+//                            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+//                            let geocoder = CLGeocoder()
+//                            geocoder.reverseGeocodeLocation(location) { placemarks, error in
+//                                if let placemark = placemarks?.first {
+//                                    self.storeAddress = self.formatAddress(from: placemark)
+//                                }
+//                            }
+                            
+                            showStoreSelection = false
                         }
-                    }
-                    
-                    UnifiedStoreSelectionView(isPresented: $showStoreSelection,
-                                              selectedStoreFilter: $selectedStoreFilter,
-                                              storeName: $storeName,
-                                              storeAddress: $storeAddress,
-                                              selectedStore: $selectedStore,
-                                              latitude: $latitude,
-                                              longitude: $longitude,
-                                              isPreferred: $isPreferred,
-                                              selectedShoppingItem: nil)
-                }
+                    )
+                    .environmentObject(locationManager)
+                    .environmentObject(viewModel)
+                
+                // Create a temporary wrapper view that forces store load on appear
+//                ZStack {
+//                    Color.clear.onAppear {
+//                        print("Store sheet appearing, force loading fresh stores...")
+//                        // Force refresh any state before loading real view
+//                        Task {
+//                            // Force refresh stores when presenting view
+//                            if self.locationManager.stores.isEmpty {
+//                                await self.locationManager.performDirectMapKitSearch()
+//                            }
+//                            
+//                            // Trigger a state update to force refresh
+//                            await MainActor.run {
+//                                self.forceRefresh.toggle()
+//                            }
+//                        }
+//                    }
+//                    
+//                    UnifiedStoreSelectionView(isPresented: $showStoreSelection,
+//                                              selectedStoreFilter: $selectedStoreFilter,
+//                                              storeName: $storeName,
+//                                              storeAddress: $storeAddress,
+//                                              selectedStore: $selectedStore,
+//                                              latitude: $latitude,
+//                                              longitude: $longitude,
+//                                              isPreferred: $isPreferred,
+//                                              selectedShoppingItem: nil)
+//                }
             }
             .sheet(isPresented: $showSubscriptionSheet) {
                 SubscriptionScreen(showSubscriptionScreen: $showSubscriptionSheet)

@@ -21,7 +21,6 @@ struct ToDoMapView: View {
     @State private var searchResults: [MKMapItem] = []
     @State private var isSearching = false
     @State private var mapRegion: MKCoordinateRegion?
-    @State private var showUnifiedStoreSelection = false
     @State private var showStoreSelectionSheet = false
     @State private var selectedStoreFilter: String = Constants.emptyString
     @State private var storeName: String = Constants.emptyString
@@ -71,7 +70,7 @@ struct ToDoMapView: View {
                 
                 if mapIsForShoppingItem {
                     Button("Show All Stores") {
-                        showUnifiedStoreSelection = true
+                        showStoreSelectionSheet = true
                     }
                     .padding(.trailing)
                 }

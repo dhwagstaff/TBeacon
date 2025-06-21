@@ -222,7 +222,7 @@ struct AddEditToDoItemView: View {
                         }
                     )
                     .environmentObject(locationManager)
-                    .environmentObject(shoppingListViewModel) // ADD THIS LINE
+                    .environmentObject(shoppingListViewModel)
                 }
                 .onChange(of: viewModel.selectedLocationAddress) {
                     if !viewModel.selectedLocationName.isEmpty {

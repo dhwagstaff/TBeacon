@@ -712,15 +712,34 @@ struct EditableListView: View {
                     selectedStore = nil
                 }
             }) {
-                UnifiedStoreSelectionView(isPresented: $showStoreSelectionSheet,
-                                          selectedStoreFilter: $selectedStoreFilter,
-                                          storeName: $storeName,
-                                          storeAddress: $storeAddress,
-                                          selectedStore: $selectedStore,
-                                          latitude: $latitude,
-                                          longitude: $longitude,
-                                          isPreferred: $isPreferred
+                ToDoMapView(
+                    cameraPosition: .region(MKCoordinateRegion(
+                        center: CLLocationCoordinate2D(
+                            latitude: latitude ?? 0.0,
+                            longitude: longitude ?? 0.0
+                        ),
+                        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    )),
+                    mapIsForShoppingItem: true,
+                    onLocationSelected: { coordinate, name in
+                        latitude = coordinate.latitude
+                        longitude = coordinate.longitude
+                        storeName = name
+                        showStoreSelectionSheet = false
+                    }
                 )
+                .environmentObject(locationManager)
+                .environmentObject(shoppingListViewModel)
+                
+//                UnifiedStoreSelectionView(isPresented: $showStoreSelectionSheet,
+//                                          selectedStoreFilter: $selectedStoreFilter,
+//                                          storeName: $storeName,
+//                                          storeAddress: $storeAddress,
+//                                          selectedStore: $selectedStore,
+//                                          latitude: $latitude,
+//                                          longitude: $longitude,
+//                                          isPreferred: $isPreferred
+//                )
             }
             .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
                 // Request a refresh when any sheet is dismissed, with a simpler approach
