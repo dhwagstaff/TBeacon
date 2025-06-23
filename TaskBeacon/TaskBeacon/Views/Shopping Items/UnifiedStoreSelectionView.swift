@@ -636,7 +636,9 @@ struct UnifiedStoreSelectionView: View {
             }
         }
         
-        self.isPresented = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isPresented = false
+        }
     }
     
     // Helper to find store index

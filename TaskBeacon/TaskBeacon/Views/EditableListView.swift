@@ -707,12 +707,35 @@ struct EditableListView: View {
                         }
                     }
                     
+                    Task {
+                        await shoppingListViewModel.saveShoppingItemToCoreData(item: item)
+                        
+                        // Update UI after saving
+                        DispatchQueue.main.async {
+                            self.refreshTrigger = UUID()
+                            
+                            // Auto-expand the new store/category
+                            if let store = item.storeName, let category = item.category {
+                                let key = "\(store)_\(category)"
+                                self.expandedCategoryMap[key] = true
+                                print("🔓 Auto-expanding category at \(key)")
+                            }
+                        }
+                    }
+                    
+                    print("✅ Store assignment initiated for item: \(item.name ?? "Unknown")")
+                    
                     // Reset states
                     selectedShoppingItem = nil
                     selectedStore = nil
+                    
+                    storeName = ""
+                    storeAddress = ""
+                    latitude = nil
+                    longitude = nil
                 }
             }) {
-                ToDoMapView(
+                MapView(
                     cameraPosition: .region(MKCoordinateRegion(
                         center: CLLocationCoordinate2D(
                             latitude: latitude ?? 0.0,
@@ -721,10 +744,18 @@ struct EditableListView: View {
                         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                     )),
                     mapIsForShoppingItem: true,
-                    onLocationSelected: { coordinate, name in
+                    onLocationSelected: { coordinate, name, address in
                         latitude = coordinate.latitude
                         longitude = coordinate.longitude
                         storeName = name
+                        storeAddress = address
+                        
+                        // Create a mock MKMapItem for the selected store to maintain consistency
+                        let placemark = MKPlacemark(coordinate: coordinate)
+                        let mapItem = MKMapItem(placemark: placemark)
+                        mapItem.name = name
+                        selectedStore = mapItem
+                        
                         showStoreSelectionSheet = false
                     }
                 )
@@ -837,7 +868,7 @@ struct EditableListView: View {
             Text(permissionManager.permissionAlertMessage)
         }
     }
-    
+        
     func startInterstitialAdTimer() {
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             if appDelegate.adManager.canShowInterstitialAd() && !isShowingInterstitialAd && !isShowingRewardedAd {
@@ -1034,6 +1065,36 @@ struct EditableListView: View {
             .listRowInsets(EdgeInsets())
             .padding(.vertical, 2)
             .background(Color(.systemBackground))
+            .contextMenu {
+                // Check if item has no store assigned (based on your ShoppingItemRow logic)
+                let hasNoStore = item.storeName == nil || item.storeName?.isEmpty == true
+                
+                if hasNoStore {
+                    Button(action: {
+                        assignStoreToItem(item)
+                    }) {
+                        Label("Assign Store", systemImage: "mappin.circle")
+                    }
+                    
+                    Button(action: {
+                        selectedShoppingItem = item
+                        showAddShoppingItem = true
+                        isShowingAnySheet = true
+                    }) {
+                        Label("Edit Item", systemImage: "pencil")
+                    }
+                    
+                    Divider()
+                    
+                    Button(role: .destructive, action: {
+                        withAnimation {
+                            deleteShoppingItem(item)
+                        }
+                    }) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
                     withAnimation {
@@ -1046,6 +1107,53 @@ struct EditableListView: View {
             }
         }
     }
+    
+    private func assignStoreToItem(_ item: ShoppingItemEntity) {
+        print("🏪 Assigning store to item: \(item.name ?? "Unknown")")
+        
+        // Set the item for store assignment
+        selectedShoppingItem = item
+        
+        // Show store selection sheet
+        Task {
+            if await permissionManager.checkAndRequestPermission(for: .location) {
+                // Initialize store list before showing sheet
+                if locationManager.stores.isEmpty {
+                    // Try to get location-based stores with a slight delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        Task { await self.locationManager.performDirectMapKitSearch() }
+                        self.showStoreSelectionSheet = true
+                    }
+                } else {
+                    // We already have stores, just show the sheet
+                    showStoreSelectionSheet = true
+                }
+            }
+        }
+    }
+
+    private func removeStoreFromItem(_ item: ShoppingItemEntity) {
+        print("🗑️ Removing store from item: \(item.name ?? "Unknown")")
+        
+        // Clear store information
+        item.storeName = nil
+        item.storeAddress = nil
+        item.latitude = 0.0
+        item.longitude = 0.0
+        
+        // Use the view model's save function
+        Task {
+            await shoppingListViewModel.saveShoppingItemToCoreData(item: item)
+            
+            // Update UI after saving
+            DispatchQueue.main.async {
+                self.refreshTrigger = UUID()
+            }
+        }
+        
+        print("✅ Store removal initiated for item: \(item.name ?? "Unknown")")
+    }
+
     
     // Add this method to EditableListView
     private func deleteToDoItem(_ item: ToDoItemEntity) {

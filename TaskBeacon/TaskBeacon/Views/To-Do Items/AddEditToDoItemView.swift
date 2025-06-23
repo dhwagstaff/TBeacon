@@ -205,7 +205,7 @@ struct AddEditToDoItemView: View {
                     .disabled(taskName.isEmpty)
                 )
                 .sheet(isPresented: $showMapPicker) {
-                    ToDoMapView(
+                    MapView(
                         cameraPosition: .region(MKCoordinateRegion(
                             center: CLLocationCoordinate2D(
                                 latitude: latitude ?? 0.0,
@@ -214,10 +214,10 @@ struct AddEditToDoItemView: View {
                             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                         )),
                         mapIsForShoppingItem: false,
-                        onLocationSelected: { coordinate, name in
+                        onLocationSelected: { coordinate, name, address in
                             latitude = coordinate.latitude
                             longitude = coordinate.longitude
-                            addressOrLocationName = name
+                            addressOrLocationName = name + " \(address)"
                             showMapPicker = false
                         }
                     )

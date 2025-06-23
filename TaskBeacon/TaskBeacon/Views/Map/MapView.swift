@@ -1,5 +1,5 @@
 //
-//  ToDoMapView.swift
+//  MapView.swift
 //  TaskBeacon
 //
 //  Created by Dean Wagstaff on 6/6/25.
@@ -8,7 +8,7 @@
 import MapKit
 import SwiftUI
 
-struct ToDoMapView: View {
+struct MapView: View {
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var viewModel: ToDoListViewModel
     @EnvironmentObject var shoppingListViewModel: ShoppingListViewModel
@@ -31,7 +31,7 @@ struct ToDoMapView: View {
     @State private var isPreferred: Bool = false
 
     var mapIsForShoppingItem: Bool
-    var onLocationSelected: ((CLLocationCoordinate2D, String) -> Void)?
+    var onLocationSelected: ((CLLocationCoordinate2D, String, String) -> Void)?
     
     init(cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic),
          selectedItem: MKMapItem? = nil,
@@ -39,7 +39,7 @@ struct ToDoMapView: View {
          searchResults: [MKMapItem] = [],
          isSearching: Bool = false,
          mapIsForShoppingItem: Bool,
-         onLocationSelected: ((CLLocationCoordinate2D, String) -> Void)? = nil
+         onLocationSelected: ((CLLocationCoordinate2D, String, String) -> Void)? = nil
     ) {
         _cameraPosition = State(initialValue: cameraPosition)
         _selectedItem = State(initialValue: selectedItem)
@@ -156,7 +156,7 @@ struct ToDoMapView: View {
                                 let address = formatAddress(from: selected.placemark)
                                 viewModel.lookupBusinessName(from: address) { businessName in
                                     onLocationSelected?(selected.placemark.coordinate,
-                                                        returnLocationName(selectedPlacemarkName: selected.name ?? "Unknown location name"))
+                                                        returnLocationName(selectedPlacemarkName: selected.name ?? "Unknown location name"), address)
                                     
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                         dismiss()
@@ -227,6 +227,11 @@ struct ToDoMapView: View {
                 // Update the map to show this selection
                 self.selectedItem = mapItem
                 handleLocationChange(to: mapItem)
+                
+                // Also call the callback with the address
+                onLocationSelected?(CLLocationCoordinate2D(latitude: lat, longitude: long),
+                                  store.name ?? "Unknown location",
+                                    storeAddress)
             }
         }) {
             UnifiedStoreSelectionView(isPresented: $showStoreSelectionSheet,
@@ -243,14 +248,14 @@ struct ToDoMapView: View {
         }
     }
     
-    private func useLocation(_ selected: MKMapItem) {
-        handleLocationSelection(selected)
-        let address = formatAddress(from: selected.placemark)
-        viewModel.lookupBusinessName(from: address) { businessName in
-            onLocationSelected?(selected.placemark.coordinate,
-                                returnLocationName(selectedPlacemarkName: selected.name ?? "Unknown location name"))
-        }
-    }
+//    private func useLocation(_ selected: MKMapItem) {
+//        handleLocationSelection(selected)
+//        let address = formatAddress(from: selected.placemark)
+//        viewModel.lookupBusinessName(from: address) { businessName in
+//            onLocationSelected?(selected.placemark.coordinate,
+//                                returnLocationName(selectedPlacemarkName: selected.name ?? "Unknown location name"), address)
+//        }
+//    }
     
     private func handleLocationChange(to item: MKMapItem) {
         let coordinate = item.placemark.coordinate
@@ -390,6 +395,6 @@ struct ToDoMapView: View {
 }
 
 //#Preview {
-//    ToDoMapView()
+//    MapView()
 //}
 

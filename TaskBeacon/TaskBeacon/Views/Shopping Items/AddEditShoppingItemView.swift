@@ -199,7 +199,7 @@ struct AddEditShoppingItemView: View {
             .sheet(isPresented: $showStoreSelection, onDismiss: {
                 isEditingText = false
             }) {
-                ToDoMapView(
+                MapView(
                         cameraPosition: .region(MKCoordinateRegion(
                             center: CLLocationCoordinate2D(
                                 latitude: latitude ?? 0.0,
@@ -207,21 +207,12 @@ struct AddEditShoppingItemView: View {
                             ),
                             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                         )),
-                        mapIsForShoppingItem: true,  // Changed to true for shopping items
-                        onLocationSelected: { coordinate, name in
+                        mapIsForShoppingItem: true,
+                        onLocationSelected: { coordinate, name, address in
                             latitude = coordinate.latitude
                             longitude = coordinate.longitude
                             storeName = name
-                            
-                            // Format address for display
-//                            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-//                            let geocoder = CLGeocoder()
-//                            geocoder.reverseGeocodeLocation(location) { placemarks, error in
-//                                if let placemark = placemarks?.first {
-//                                    self.storeAddress = self.formatAddress(from: placemark)
-//                                }
-//                            }
-                            
+                            storeAddress = address                            
                             showStoreSelection = false
                         }
                     )

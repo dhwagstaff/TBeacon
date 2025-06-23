@@ -37,7 +37,7 @@ struct ShoppingItemRow: View {
                 }
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
-
+                
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 12) {
                         if let imageData = item.productImage, let uiImage = UIImage(data: imageData) {
@@ -50,23 +50,18 @@ struct ShoppingItemRow: View {
                             Text(item.emoji ?? "🛒")
                                 .font(.title2)
                         }
-
+                        
                         Text(item.name ?? "Unknown")
                             .font(.headline)
                             .strikethrough(item.isCompleted, color: colorScheme == .dark ? .gray.opacity(0.7) : .gray)
                             .foregroundColor(item.isCompleted ? .gray : .primary)
                             .foregroundColor(item.isCompleted ?
-                                (colorScheme == .dark ? .gray.opacity(0.7) : .gray) :
-                                .primary)
+                                             (colorScheme == .dark ? .gray.opacity(0.7) : .gray) :
+                                    .primary)
                     }
-
+                    
                     if let storeName = item.storeName, !storeName.isEmpty {
                         // Only show store name if this item is in the "Other" or unassigned group
-                        if item.storeName == nil || item.storeName?.isEmpty == true {
-//                            Text("Store: \(storeName)")
-//                                .font(.subheadline)
-//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
-                        }
                     } else {
                         Text("⚠️ No store assigned")
                             .font(.subheadline)
@@ -74,23 +69,25 @@ struct ShoppingItemRow: View {
                             .padding(4)
                             .background(
                                 colorScheme == .dark ?
-                                    Color.orange.opacity(0.15) :
+                                Color.orange.opacity(0.15) :
                                     Color.orange.opacity(0.1)
                             )
                             .cornerRadius(6)
                     }
-
-//                    if let storeAddress = item.storeAddress, !storeAddress.isEmpty {
-//                        // Only show address if this item is in the "Other" or unassigned group
-//                        if item.storeName == nil || item.storeName?.isEmpty == true {
-//                            Text("Address: \(storeAddress)")
-//                                .font(.caption)
-//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
-//                        }
-//                    }
                 }
-
+                
                 Spacer()
+                
+                // Add subtle "more options" indicator for unassigned items
+                HStack {
+                    Spacer()
+                    Image(systemName: "ellipsis.circle")
+                        .frame(width: 50, height: 50)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .opacity(0.6)
+                }
+                .padding(.trailing, 20)
             }
             .padding(.vertical, 4)
         }

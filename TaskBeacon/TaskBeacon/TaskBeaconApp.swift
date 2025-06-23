@@ -121,17 +121,34 @@ struct TaskBeaconApp: App {
                     }
                 }
                 .onAppear {
+                    // Only show onboarding if not completed
                     if !hasCompletedOnboarding {
                         showOnboarding = true
                     }
-
                     appDelegate.adManager.entitlementManager = entitlementManager
-
                     scheduleDueDateNotifications()
                 }
                 .sheet(isPresented: $showOnboarding) {
                     OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
                 }
+                // Dismiss the onboarding sheet when completed
+                .onChange(of: hasCompletedOnboarding) {
+                    if hasCompletedOnboarding {
+                        showOnboarding = false
+                    }
+                }
+//                .onAppear {
+//                    if !hasCompletedOnboarding {
+//                        showOnboarding = true
+//                    }
+//
+//                    appDelegate.adManager.entitlementManager = entitlementManager
+//
+//                    scheduleDueDateNotifications()
+//                }
+//                .sheet(isPresented: $showOnboarding) {
+//                    OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+//                }
         }
     }
     
