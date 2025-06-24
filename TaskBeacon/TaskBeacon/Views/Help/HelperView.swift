@@ -25,7 +25,7 @@ struct HelperView: View {
                     helpManager.loadHelpGuide()
                 }
             } else if let helpGuide = helpManager.helpGuide {
-                HelpContentView(helpGuide: helpGuide, searchText: $searchText)
+                HelpContentView(searchText: $searchText, helpGuide: helpGuide)
             } else {
                 EmptyView()
             }
