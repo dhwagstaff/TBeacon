@@ -108,7 +108,7 @@
           "localizations" : [
             {
               "description" : "Task Beacon Premium unlimited items & no ads",
-              "displayName" : "Task Beacon Premium (Annual)",
+              "displayName" : "Task Beacon Premium ($49.99 Annual)",
               "locale" : "en_US"
             }
           ],
@@ -136,7 +136,7 @@
           "localizations" : [
             {
               "description" : "Task Beacon Premium unlimited items & ad-free",
-              "displayName" : "Task Beacon Premium (Monthly)",
+              "displayName" : "Task Beacon Premium ($4.99 Monthly)",
               "locale" : "en_US"
             }
           ],
