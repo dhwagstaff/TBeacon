@@ -12,6 +12,11 @@ import StoreKit
 import SwiftUI
 
 struct AddEditShoppingItemView: View {
+    @AppStorage("preferredStoreName") private var preferredStoreName: String = ""
+    @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
+    @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
+    @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
+
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) private var presentationMode
             
@@ -344,6 +349,24 @@ struct AddEditShoppingItemView: View {
             self.selectedStore = nil
             self.storeName = ""
             self.storeAddress = ""
+        }
+        
+        if !preferredStoreName.isEmpty {
+            self.storeName = preferredStoreName
+            self.storeAddress = preferredStoreAddress
+            self.latitude = preferredStoreLatitude
+            self.longitude = preferredStoreLongitude
+            
+            // Create a mock MKMapItem for the preferred store
+            let placemark = MKPlacemark(coordinate: CLLocationCoordinate2D(
+                latitude: preferredStoreLatitude,
+                longitude: preferredStoreLongitude
+            ))
+            let mapItem = MKMapItem(placemark: placemark)
+            mapItem.name = preferredStoreName
+            self.selectedStore = mapItem
+            
+            print("✅ Auto-populated preferred store: \(preferredStoreName) at \(preferredStoreLatitude), \(preferredStoreLongitude)")
         }
         
         // Only perform initial search if stores are empty

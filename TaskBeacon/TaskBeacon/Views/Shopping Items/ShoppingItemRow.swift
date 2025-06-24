@@ -13,7 +13,7 @@ struct ShoppingItemRow: View {
     @EnvironmentObject var viewModel: ShoppingListViewModel
 
     @ObservedObject var item: ShoppingItemEntity
-
+    
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -61,7 +61,11 @@ struct ShoppingItemRow: View {
                     }
                     
                     if let storeName = item.storeName, !storeName.isEmpty {
-                        // Only show store name if this item is in the "Other" or unassigned group
+//                        HStack(spacing: 4) {
+//                            Text("📍 \(storeName)")
+//                                .font(.subheadline)
+//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
+//                        }
                     } else {
                         Text("⚠️ No store assigned")
                             .font(.subheadline)
@@ -99,21 +103,21 @@ struct ShoppingItemRow: View {
     }
 }
 
-func makeMockShoppingItem() -> ShoppingItemEntity {
-    let context = PersistenceController.shared.container.viewContext
-    let item = ShoppingItemEntity(context: context)
-    item.uid = UUID().uuidString
-    item.name = "Organic Bananas"
-    item.category = "Grocery -> Fresh Produce"
-    item.storeName = "Whole Foods Market"
-    item.price = 2.99
-    item.isCompleted = false
-    item.expirationDate = Calendar.current.date(byAdding: .day, value: 5, to: Date())
-    return item
-}
+//func makeMockShoppingItem() -> ShoppingItemEntity {
+//    let context = PersistenceController.shared.container.viewContext
+//    let item = ShoppingItemEntity(context: context)
+//    item.uid = UUID().uuidString
+//    item.name = "Organic Bananas"
+//    item.category = "Grocery -> Fresh Produce"
+//    item.storeName = "Whole Foods Market"
+//    item.price = 2.99
+//    item.isCompleted = false
+//    item.expirationDate = Calendar.current.date(byAdding: .day, value: 5, to: Date())
+//    return item
+//}
 
-#Preview {
-    ShoppingItemRow(item: makeMockShoppingItem())
-}
+//#Preview {
+//    ShoppingItemRow(item: makeMockShoppingItem())
+//}
 
 

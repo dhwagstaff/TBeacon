@@ -7,6 +7,11 @@ import UserNotifications
 import UIKit
 
 struct UnifiedStoreSelectionView: View {
+    @AppStorage("preferredStoreName") private var preferredStoreName: String = ""
+    @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
+    @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
+    @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
+
     @Environment(\.presentationMode) private var presentationMode
     
     @EnvironmentObject private var dataUpdateManager: DataUpdateManager
@@ -357,6 +362,11 @@ struct UnifiedStoreSelectionView: View {
     }
 
     private struct StoreRowView: View {
+        @AppStorage("preferredStoreName") private var preferredStoreName: String = ""
+        @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
+        @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
+        @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
+
         @EnvironmentObject var viewModel: ShoppingListViewModel
 
         let store: StoreOption
@@ -367,8 +377,24 @@ struct UnifiedStoreSelectionView: View {
         let locationManager: LocationManager
         let onSelect: () -> Void
         
+        private var isPreferredStore: Bool {
+            return !preferredStoreName.isEmpty &&
+                   store.name == preferredStoreName &&
+                   store.address == preferredStoreAddress
+        }
+        
         var body: some View {
             HStack {
+                Button(action: {
+                    togglePreferredStore()
+                }) {
+                    Image(systemName: isPreferredStore ? "star.fill" : "star")
+                        .foregroundColor(isPreferredStore ? .yellow : .gray)
+                        .font(.system(size: 16))
+                }
+                .buttonStyle(BorderlessButtonStyle())
+                .padding(.leading, 8)
+                
                 VStack(alignment: .leading, spacing: 4) {
                     Text(store.name)
                         .font(.headline)
@@ -385,42 +411,7 @@ struct UnifiedStoreSelectionView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Spacer()
-                
-//                if store.isPreferred {
-//                    Image(systemName: "star.fill")
-//                        .foregroundColor(.yellow)
-//                        .padding(.trailing, 8)
-//                } else {
-//                    Button(action: {
-//                        Task {
-//                            let context = PersistenceController.shared.container.viewContext
-//                            let fetchRequest: NSFetchRequest<ShoppingItemEntity> = ShoppingItemEntity.fetchRequest()
-//                            fetchRequest.predicate = NSPredicate(format: "storeName == %@ AND storeAddress == %@",
-//                                                                 store.name, store.address)
-//
-//                            if let items = try? context.fetch(fetchRequest), let item = items.first {
-//                                // Existing item: update
-//                                item.isPreferred = true
-//                                await viewModel.saveShoppingItemToCoreData(item: item)
-//                            } else {
-//                                // New item: create and set preferred
-//                                let newItem = ShoppingItemEntity(context: context)
-//                                newItem.storeName = store.name
-//                                newItem.storeAddress = store.address
-//                                newItem.isPreferred = true
-//                                // Set other required fields as needed
-//                                await viewModel.saveShoppingItemToCoreData(item: newItem)
-//                            }
-//                            
-//                            viewModel.processStores(searchQuery: searchQuery, selectedCategoryIndex: selectedCategoryIndex)
-//                        }
-//                    }) {
-//                        Image(systemName: "star")
-//                            .foregroundColor(.yellow)
-//                            .padding(.trailing, 8)
-//                    }
-//                }
-                
+                                
                 if let userLocation = locationManager.userLocation {
                     let distance = userLocation.distance(from: CLLocation(
                         latitude: store.mapItem.placemark.coordinate.latitude,
@@ -436,10 +427,24 @@ struct UnifiedStoreSelectionView: View {
             .onTapGesture {
                 onSelect()
             }
-//            .onAppear {
-//                print("Store: \(store.name), Category: \(category)")
-//               // store.isPreferred = (category == "Preferred Stores")
-//            }
+        }
+        
+        private func togglePreferredStore() {
+            if isPreferredStore {
+                // Clear preferred store
+                preferredStoreName = ""
+                preferredStoreAddress = ""
+                preferredStoreLatitude = 0.0
+                preferredStoreLongitude = 0.0
+                print("🗑️ Cleared preferred store")
+            } else {
+                // Set this store as preferred store
+                preferredStoreName = store.name
+                preferredStoreAddress = store.address
+                preferredStoreLatitude = store.mapItem.placemark.coordinate.latitude
+                preferredStoreLongitude = store.mapItem.placemark.coordinate.longitude
+                print("⭐ Set preferred store: \(store.name)")
+            }
         }
         
         private func formatDistance(_ distance: CLLocationDistance) -> String {

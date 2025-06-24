@@ -54,6 +54,10 @@ struct ListReloadWrapper<Content: View>: View {
 
 struct EditableListView: View {
     @AppStorage("selectedSegment") private var selectedSegment = "To-Do"
+    @AppStorage("preferredStoreName") private var preferredStoreName: String = ""
+    @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
+    @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
+    @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
     
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.scenePhase) private var scenePhase
@@ -69,7 +73,8 @@ struct EditableListView: View {
     @StateObject private var appDelegate = AppDelegate.shared
     @StateObject private var barcodeScannerViewModel = BarcodeScannerViewModel()
     @StateObject private var permissionManager = PermissionManager.shared
-    
+    @StateObject private var preferredStoreManager = PreferredStoreManager()
+
     @State private var recentlyDeletedItem: (NSManagedObject, () -> Void)?
     @State private var showAddShoppingItem = false
     @State private var showAddTodoItem = false
@@ -802,6 +807,7 @@ struct EditableListView: View {
             .sheet(isPresented: $showSettings) {
                 NavigationView {
                     SettingsView()
+                        .environmentObject(preferredStoreManager)
                         .environmentObject(subscriptionsManager)
                 }
             }

@@ -135,3 +135,130 @@
             },
             {
               "title": "Voice Input",
+              "description": "Use voice commands for hands-free adding",
+              "icon": "mic.fill"
+            }
+          ],
+          "tips": [
+            "Use categories to organize your shopping list",
+            "Set expiration dates for perishable items",
+            "Add notes for specific brand preferences"
+          ]
+        },
+        {
+          "id": "store-assignment",
+          "title": "Store Assignment",
+          "subtitle": "Organize items by store",
+          "content": "Assign stores to your shopping items for better organization and location-based reminders:",
+          "methods": [
+            {
+              "title": "Tap to Edit",
+              "description": "Tap any item to edit and assign a store",
+              "icon": "pencil.circle.fill"
+            },
+            {
+              "title": "Context Menu",
+              "description": "Long-press unassigned items for quick store assignment",
+              "icon": "ellipsis.circle.fill"
+            },
+            {
+              "title": "Map Selection",
+              "description": "Use the map to find and select nearby stores",
+              "icon": "map.fill"
+            },
+            {
+              "title": "Store List",
+              "description": "Browse all available stores in your area",
+              "icon": "list.bullet"
+            }
+          ],
+          "tips": [
+            "Unassigned items show a warning indicator",
+            "Use the context menu for quick store assignment",
+            "Stores are automatically monitored for location reminders"
+          ]
+        },
+        {
+          "id": "preferred-store",
+          "title": "Preferred Store",
+          "subtitle": "Set your go-to shopping location",
+          "content": "Designate a preferred store to automatically populate new shopping items with your most frequented location:",
+          "features": [
+            {
+              "title": "Auto-Population",
+              "description": "New items automatically get your preferred store assigned",
+              "icon": "star.fill"
+            },
+            {
+              "title": "Easy Setup",
+              "description": "Set your preferred store from the map or store list",
+              "icon": "mappin.circle.fill"
+            },
+            {
+              "title": "Quick Change",
+              "description": "Change your preferred store anytime from Settings",
+              "icon": "gear"
+            },
+            {
+              "title": "One Store Only",
+              "description": "Only one store can be preferred at a time",
+              "icon": "checkmark.circle.fill"
+            }
+          ],
+          "howToSet": [
+            {
+              "step": 1,
+              "title": "From Map View",
+              "description": "Search for a store, tap the star ⭐ next to it in results, then tap 'Use This Location'"
+            },
+            {
+              "step": 2,
+              "title": "From Store List",
+              "description": "Open 'Show All Stores', tap the star ⭐ next to your preferred store"
+            },
+            {
+              "step": 3,
+              "title": "From Settings",
+              "description": "Go to Settings → Preferred Store to manage your selection"
+            }
+          ],
+          "tips": [
+            "Your preferred store is saved and persists across app launches",
+            "You can still change the store for individual items after creation",
+            "The preferred store helps speed up your shopping list creation",
+            "Unassigned items can still be assigned to any store using context menus"
+          ]
+        },
+        {
+          "id": "context-menus",
+          "title": "Context Menus",
+          "subtitle": "Quick actions for unassigned items",
+          "content": "Use context menus (long-press) on unassigned shopping items for quick actions:",
+          "actions": [
+            {
+              "title": "Assign Store",
+              "description": "Quickly assign a store without opening the edit view",
+              "icon": "mappin.circle"
+            },
+            {
+              "title": "Edit Item",
+              "description": "Open the full edit view for detailed changes",
+              "icon": "pencil"
+            },
+            {
+              "title": "Delete Item",
+              "description": "Remove the item from your shopping list",
+              "icon": "trash"
+            }
+          ],
+          "tips": [
+            "Context menus only appear on unassigned items",
+            "Assigned items can be edited by tapping them directly",
+            "The ellipsis icon indicates context menu availability",
+            "Use context menus to speed up your workflow"
+          ]
+        }
+      ]
+    }
+  ]
+}

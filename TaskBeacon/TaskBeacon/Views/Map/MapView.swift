@@ -9,6 +9,11 @@ import MapKit
 import SwiftUI
 
 struct MapView: View {
+    @AppStorage("preferredStoreName") private var preferredStoreName: String = ""
+    @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
+    @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
+    @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
+
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var viewModel: ToDoListViewModel
     @EnvironmentObject var shoppingListViewModel: ShoppingListViewModel
@@ -197,17 +202,43 @@ struct MapView: View {
             // The search results list remains the same.
             if !searchResults.isEmpty && selectedItem == nil {
                 List(searchResults) { item in
-                    VStack(alignment: .leading) {
-                        Text(item.name ?? "Result")
-                            .font(.headline)
-                        Text(addressString(for: item.placemark))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(item.name ?? "Result")
+                                .font(.headline)
+                            Text(addressString(for: item.placemark))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        // Star button for preferred store
+                        Button(action: {
+                            setPreferredStore(item)
+                        }) {
+                            Image(systemName: isPreferredStore(item) ? "star.fill" : "star")
+                                .foregroundColor(isPreferredStore(item) ? .yellow : .gray)
+                                .font(.title3)
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
                         selectLocation(item)
                     }
+                    
+//                    VStack(alignment: .leading) {
+//                        Text(item.name ?? "Result")
+//                            .font(.headline)
+//                        Text(addressString(for: item.placemark))
+//                            .font(.caption)
+//                            .foregroundColor(.secondary)
+//                    }
+//                    .contentShape(Rectangle())
+//                    .onTapGesture {
+//                        selectLocation(item)
+//                    }
                 }
                 .listStyle(.plain)
             }
@@ -248,14 +279,25 @@ struct MapView: View {
         }
     }
     
-//    private func useLocation(_ selected: MKMapItem) {
-//        handleLocationSelection(selected)
-//        let address = formatAddress(from: selected.placemark)
-//        viewModel.lookupBusinessName(from: address) { businessName in
-//            onLocationSelected?(selected.placemark.coordinate,
-//                                returnLocationName(selectedPlacemarkName: selected.name ?? "Unknown location name"), address)
-//        }
-//    }
+    private func isPreferredStore(_ item: MKMapItem) -> Bool {
+        return item.name == preferredStoreName &&
+               addressString(for: item.placemark) == preferredStoreAddress
+    }
+    
+    private func setPreferredStore(_ item: MKMapItem) {
+        let storeName = item.name ?? "Unknown Store"
+        let storeAddress = addressString(for: item.placemark)
+        let coordinate = item.placemark.coordinate
+        
+        // Update preferred store
+        preferredStoreName = storeName
+        preferredStoreAddress = storeAddress
+        preferredStoreLatitude = coordinate.latitude
+        preferredStoreLongitude = coordinate.longitude
+        
+        // Provide user feedback
+        // You could add a temporary toast or haptic feedback here
+    }
     
     private func handleLocationChange(to item: MKMapItem) {
         let coordinate = item.placemark.coordinate

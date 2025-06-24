@@ -12,12 +12,20 @@ import SwiftUI
 
 // In SettingsView.swift
 struct SettingsView: View {
-    @EnvironmentObject var subscriptionsManager: SubscriptionsManager
-    @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
-
+    @AppStorage("preferredStoreName") private var preferredStoreName: String = ""
+    @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
+    @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
+    @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
     @AppStorage("enableDarkMode") private var enableDarkMode: Bool = false
     @AppStorage("distanceUnit") private var distanceUnit: String = "meters"
+
+    @EnvironmentObject var subscriptionsManager: SubscriptionsManager
+    @EnvironmentObject var preferredStoreManager: PreferredStoreManager
+    @EnvironmentObject var viewModel: ShoppingListViewModel
+    @EnvironmentObject var locationManager: LocationManager
+
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
 
     @StateObject private var permissionManager = PermissionManager.shared
     @StateObject private var appDelegate = AppDelegate.shared
@@ -27,6 +35,11 @@ struct SettingsView: View {
     @State private var showPrivacyOptionsAlert: Bool = false
     @State private var isPrivacyOptionsButtonDisabled: Bool = false
     @State private var showHelpView = false
+    @State private var showPreferredStoreSelection = false
+    @State private var selectedStoreName: String = ""
+    @State private var selectedStoreAddress: String = ""
+    @State private var selectedLatitude: Double = 0.0
+    @State private var selectedLongitude: Double = 0.0
 
     var radiusDisplay: String {
         let radiusMeters = UserDefaults.standard.double(forKey: "geofenceRadius")
@@ -47,6 +60,61 @@ struct SettingsView: View {
                     }) {
                         Label("Help & Guide", systemImage: "questionmark.circle.fill")
                             .foregroundColor(.blue)
+                    }
+                }
+                
+                Section(header: Text("Preferred Store")) {
+                    if !preferredStoreName.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Current Preferred Store")
+                                    .font(.headline)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(preferredStoreName)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                
+                                Text(preferredStoreAddress)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            HStack {
+                                Button("Change Store") {
+                                    showPreferredStoreSelection = true
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Spacer()
+                                
+                                Button("Clear Preferred Store") {
+                                    preferredStoreManager.clearPreferredStore()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.red)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No Preferred Store Set")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            Text("Set a preferred store to automatically assign it to new shopping items.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Button("Set Preferred Store") {
+                                showPreferredStoreSelection = true
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
                 
@@ -254,6 +322,37 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showHelpView) {
             HelperView()
+        }
+        .sheet(isPresented: $showPreferredStoreSelection) {
+            MapView(
+                cameraPosition: .region(MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: preferredStoreLatitude != 0.0 ? preferredStoreLatitude : 40.7128,
+                        longitude: preferredStoreLongitude != 0.0 ? preferredStoreLongitude : -74.0060
+                    ),
+                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                )),
+                mapIsForShoppingItem: true,
+                onLocationSelected: { coordinate, name, address in
+                    // Update the preferred store
+                    preferredStoreName = name
+                    preferredStoreAddress = address
+                    preferredStoreLatitude = coordinate.latitude
+                    preferredStoreLongitude = coordinate.longitude
+                    
+                    // Also update the PreferredStoreManager if you're using it
+                    preferredStoreManager.setPreferredStore(
+                        name: name,
+                        address: address,
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude
+                    )
+                    
+                    showPreferredStoreSelection = false
+                }
+            )
+            .environmentObject(locationManager)
+            .environmentObject(viewModel)
         }
         .onAppear {
             // Update permission statuses when view appears
