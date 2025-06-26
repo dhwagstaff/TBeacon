@@ -305,6 +305,71 @@ struct SettingsView: View {
                         Text("Low").tag("low")
                     }
                 }
+                
+                Section(header: Text("Debug Settings")) {
+                    HStack {
+                        Text("Current Trial Limit")
+                        Spacer()
+                        Text("\(FreeLimitChecker.getCurrentLimit())")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Trial Limit Override")
+                        Spacer()
+                        Text("\(UserDefaults.standard.integer(forKey: "debug_trial_limit"))")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Button("Set Trial Limit: 10") {
+                            UserDefaults.standard.set(10, forKey: "debug_trial_limit")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button("Set Trial Limit: 50") {
+                            UserDefaults.standard.set(50, forKey: "debug_trial_limit")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button("Clear Override") {
+                            UserDefaults.standard.removeObject(forKey: "debug_trial_limit")
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+                    }
+                    
+                    HStack {
+                        Text("Free Limit Override")
+                        Spacer()
+                        Text("\(UserDefaults.standard.integer(forKey: "debug_free_limit"))")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Button("Set Free Limit: 3") {
+                            UserDefaults.standard.set(3, forKey: "debug_free_limit")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button("Set Free Limit: 5") {
+                            UserDefaults.standard.set(5, forKey: "debug_free_limit")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button("Clear Override") {
+                            UserDefaults.standard.removeObject(forKey: "debug_free_limit")
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+                    }
+                    
+                    Button("Reset Trial Data") {
+                        FreeLimitChecker.resetTrialForTesting()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                }
             }
             .padding(.top, -100)
         }

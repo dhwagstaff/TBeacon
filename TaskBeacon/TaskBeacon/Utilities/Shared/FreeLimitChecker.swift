@@ -18,9 +18,24 @@ struct FreeLimitChecker {
     // Add a UserDefaults key for tracking rewarded items
     private static let REWARDED_ITEMS_KEY = "rewardedItemsCount"
     
+    private static let DEBUG_TRIAL_LIMIT_KEY = "debug_trial_limit"
+    private static let DEBUG_FREE_LIMIT_KEY = "debug_free_limit"
+
     // Keychain constants
     private static let KEYCHAIN_SERVICE = "com.pocketmeapps.taskbeacon"
     private static let KEYCHAIN_FIRST_LAUNCH_KEY = "first_launch_date"
+    
+    // Helper function to get the effective trial limit (with debug override)
+    private static func getEffectiveTrialLimit() -> Int {
+        let debugLimit = UserDefaults.standard.integer(forKey: DEBUG_TRIAL_LIMIT_KEY)
+        return debugLimit > 0 ? debugLimit : TRIAL_LIMIT
+    }
+    
+    // Helper function to get the effective base free limit (with debug override)
+    private static func getEffectiveBaseFreeLimit() -> Int {
+        let debugLimit = UserDefaults.standard.integer(forKey: DEBUG_FREE_LIMIT_KEY)
+        return debugLimit > 0 ? debugLimit : BASE_FREE_LIMIT
+    }
     
     // Get the first launch date from Keychain
     private static func getFirstLaunchDate() -> Date? {
@@ -76,9 +91,15 @@ struct FreeLimitChecker {
     // Function to get the current total limit (base + rewarded + trial bonus)
     static func getCurrentLimit() -> Int {
         let rewardedCount = UserDefaults.standard.integer(forKey: REWARDED_ITEMS_KEY)
-        let baseLimit = isInTrialPeriod() ? TRIAL_LIMIT : BASE_FREE_LIMIT
+        let baseLimit = isInTrialPeriod() ? getEffectiveTrialLimit() : getEffectiveBaseFreeLimit()
         return baseLimit + rewardedCount
     }
+    
+//    static func getCurrentLimit() -> Int {
+//        let rewardedCount = UserDefaults.standard.integer(forKey: REWARDED_ITEMS_KEY)
+//        let baseLimit = isInTrialPeriod() ? TRIAL_LIMIT : BASE_FREE_LIMIT
+//        return baseLimit + rewardedCount
+//    }
     
     // Get remaining trial days (nil if trial is over)
     static func getRemainingTrialDays() -> Int? {
