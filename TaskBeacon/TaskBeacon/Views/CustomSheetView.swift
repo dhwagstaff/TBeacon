@@ -51,6 +51,9 @@ struct CustomSheetView: View {
                 .shadow(radius: 10)
                 .transition(.move(edge: .bottom))
                 .onDisappear { refreshToDoData() }
+                .onAppear {
+                    print("🔍 CustomSheetView: AddEditToDoItemView appeared - new item")
+                }
             }
 
             if let shoppingItem = selectedShoppingItem {
@@ -118,18 +121,12 @@ struct CustomSheetView: View {
         
         // Post specific notification for UI to refresh
         NotificationCenter.default.post(name: ShoppingNotification.forceUIRefresh.name, object: nil)
-        
-        // Log item count to verify refresh
-        print("📋 Sheet dismissed - Shopping items count: \(shoppingListViewModel.shoppingItems.count)")
-        
-        resetState()
     }
 
     private func refreshToDoData() {
         todoListViewModel.updateGroupedToDoItems(updateExists: true)
         dataUpdateManager.needsRefresh = true
         navigateToEditableList = true
-        resetState()
     }
 
     private func resetState() {

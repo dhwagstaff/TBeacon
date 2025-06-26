@@ -210,6 +210,25 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         
         // Rest of existing refresh code...
         UserDefaults.standard.set(Date(), forKey: "lastGeofenceRefresh")
+        
+        checkTrialExpiration()
+    }
+    
+    func checkTrialExpiration() {
+        let isInTrial = FreeLimitChecker.isInTrialPeriod()
+        let wasInTrial = UserDefaults.standard.bool(forKey: "wasInTrial")
+        
+        print("🔍 App-level trial check - isInTrial: \(isInTrial), wasInTrial: \(wasInTrial)")
+        
+        if wasInTrial && !isInTrial {
+            // Trial just expired - post notification
+            print(" Trial just expired - posting notification")
+            NotificationCenter.default.post(name: .trialExpired, object: nil)
+            UserDefaults.standard.set(false, forKey: "wasInTrial")
+        } else if isInTrial {
+            print(" User is in trial - setting wasInTrial to true")
+            UserDefaults.standard.set(true, forKey: "wasInTrial")
+        }
     }
     
     // Function to load initial ad
@@ -245,6 +264,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
 
 extension Notification.Name {
     static let quickActionTriggered = Notification.Name("quickActionTriggered")
+    static let trialExpired = Notification.Name("trialExpired")
 }
 
 class CustomSceneDelegate: UIResponder, UIWindowSceneDelegate {

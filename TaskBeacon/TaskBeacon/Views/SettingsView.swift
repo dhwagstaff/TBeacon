@@ -428,7 +428,6 @@ struct SettingsView: View {
         guard let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") else { return }
         UIApplication.shared.open(url)
     }
-
 }
 
 #Preview {

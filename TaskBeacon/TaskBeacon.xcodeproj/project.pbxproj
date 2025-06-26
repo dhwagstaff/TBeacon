@@ -10,12 +10,14 @@
 		5C3CC7032DDC16D600BA3995 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 5C3CC7022DDC16D600BA3995 /* GoogleMobileAds */; };
 		5CBAF0972DFC982B002CC5E9 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5CBAF0962DFC982B002CC5E9 /* FirebaseAnalytics */; };
 		5CBAF0992DFC982B002CC5E9 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5CBAF0982DFC982B002CC5E9 /* FirebaseCrashlytics */; };
+		5CDF3D962E0C390700CCBABE /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5CDF3D952E0C390700CCBABE /* StoreKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		5C3331542DDBFA5D006D6112 /* TaskBeacon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TaskBeacon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C9F07C62DDCC23300D68F41 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5CD2BF5B2DDCE8C200A0EA81 /* TaskBeacon.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaskBeacon.entitlements; sourceTree = "<group>"; };
+		5CDF3D952E0C390700CCBABE /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +36,7 @@
 				5CBAF0992DFC982B002CC5E9 /* FirebaseCrashlytics in Frameworks */,
 				5CBAF0972DFC982B002CC5E9 /* FirebaseAnalytics in Frameworks */,
 				5C3CC7032DDC16D600BA3995 /* GoogleMobileAds in Frameworks */,
+				5CDF3D962E0C390700CCBABE /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +49,7 @@
 				5CD2BF5B2DDCE8C200A0EA81 /* TaskBeacon.entitlements */,
 				5C9F07C62DDCC23300D68F41 /* Info.plist */,
 				5C3331562DDBFA5D006D6112 /* TaskBeacon */,
+				5CDF3D942E0C390700CCBABE /* Frameworks */,
 				5C3331552DDBFA5D006D6112 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -56,6 +60,14 @@
 				5C3331542DDBFA5D006D6112 /* TaskBeacon.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		5CDF3D942E0C390700CCBABE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5CDF3D952E0C390700CCBABE /* StoreKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -271,7 +283,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = TaskBeacon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 52;
+				CURRENT_PROJECT_VERSION = 56;
 				DEVELOPMENT_ASSET_PATHS = "\"TaskBeacon/Preview Content\"";
 				DEVELOPMENT_TEAM = LMC9JS3WT4;
 				ENABLE_PREVIEWS = YES;
@@ -314,7 +326,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = TaskBeacon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 52;
+				CURRENT_PROJECT_VERSION = 56;
 				DEVELOPMENT_ASSET_PATHS = "\"TaskBeacon/Preview Content\"";
 				DEVELOPMENT_TEAM = LMC9JS3WT4;
 				ENABLE_PREVIEWS = YES;

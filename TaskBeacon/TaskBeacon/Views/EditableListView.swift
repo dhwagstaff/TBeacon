@@ -126,9 +126,11 @@ struct EditableListView: View {
     @State private var isShowingRewardedAd = false
     @State private var isShowingInterstitialAd = false
     @State private var showHelpView = false
+    @State private var showingTrialExpiredAlert = false
+    @State private var showSubscriptionScreen = false
+    @State private var trialCheckTimer: Timer?
 
     private static var isRefreshing = false
-    // this may be needed for didenterregion and for todomap  private var userLocationManager: CLLocationManager?
         
     let todoRowHeight = 100.0
     
@@ -522,15 +524,14 @@ struct EditableListView: View {
         LocationManager.shared.initializeWithItems(items)
         LocationManager.shared.viewContext = context
         
-        // Set up dedicated user location manager
-      // this may be needed for didenterregion and for todomap let manager = CLLocationManager()
-        // We'll set the delegate in onAppear to avoid memory leaks
-        // this may be needed for didenterregion and for todomap  self.userLocationManager = manager
+        startTrialCheckTimer()
     }
         
     var body: some View {
         NavigationView {
             VStack {
+                let _ = print("🔍 EditableListView body - showAddShoppingItem: \(showAddShoppingItem), showAddTodoItem: \(showAddTodoItem)")
+
                 if let product = selectedProduct {
                     ProductInfoView(product: product, stores: availableStores)
                 }
@@ -594,6 +595,8 @@ struct EditableListView: View {
                         
                         Menu {
                             Button {
+                                print("🔍 Shopping Item button tapped")
+
                                 selectedSegment = "Shopping"
 
                                 // Show loading overlay
@@ -602,11 +605,13 @@ struct EditableListView: View {
                                         isShowingLoadingOverlay = true
                                         
                                         shoppingListViewModel.beginAddFlow {
+                                            print("🔍 Setting showAddShoppingItem = true")
                                             showAddShoppingItem = true
                                             isShowingAnySheet = true
                                         }
                                     } else {
                                         isShowingLoadingOverlay = false
+                                        print("🔍 Setting showAddShoppingItem = true")
                                         showAddShoppingItem = true
                                         isShowingAnySheet = true
                                     }
@@ -624,9 +629,15 @@ struct EditableListView: View {
                             }
                             
                             Button {
+                                print("🔍 To-Do Item button tapped")
+                                print("🔍 Before setting - showAddTodoItem: \(showAddTodoItem), isShowingAnySheet: \(isShowingAnySheet)")
+
                                 showAddTodoItem = true
                                 selectedSegment = "To-Do"
                                 isShowingAnySheet = true
+                                print("🔍 After setting - showAddTodoItem: \(showAddTodoItem), isShowingAnySheet: \(isShowingAnySheet)")
+                                print("🔍 Setting showAddTodoItem = true, isShowingAnySheet = true")
+
                             } label: {
                                 Label("To-Do Item", systemImage: "checklist")
                                     .foregroundColor(.green)
@@ -766,16 +777,6 @@ struct EditableListView: View {
                 )
                 .environmentObject(locationManager)
                 .environmentObject(shoppingListViewModel)
-                
-//                UnifiedStoreSelectionView(isPresented: $showStoreSelectionSheet,
-//                                          selectedStoreFilter: $selectedStoreFilter,
-//                                          storeName: $storeName,
-//                                          storeAddress: $storeAddress,
-//                                          selectedStore: $selectedStore,
-//                                          latitude: $latitude,
-//                                          longitude: $longitude,
-//                                          isPreferred: $isPreferred
-//                )
             }
             .fullScreenCover(isPresented: $isShowingAnySheet, onDismiss: {
                 // Request a refresh when any sheet is dismissed, with a simpler approach
@@ -820,6 +821,10 @@ struct EditableListView: View {
             .onChange(of: todoListViewModel.toDoItems) {
                 checkForRewardedAdTrigger()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .trialExpired)) { _ in
+                print("🔍 Trial expired notification received - showing alert")
+                showingTrialExpiredAlert = true
+            }
             .onAppear {
                 observeChanges()
                 
@@ -829,19 +834,14 @@ struct EditableListView: View {
                 }
                              
                 locationManager.loadAndMonitorAllGeofences(from: viewContext)
-                
-//                for item in shoppingListViewModel.shoppingItems {
-//                    if let uid = item.uid, item.latitude != 0, item.longitude != 0 {
-//                        let coordinate = CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude)
-//                        locationManager.monitorRegionAtLocation(center: coordinate, identifier: item.uid ?? UUID().uuidString, item: item)
-//                    }
-//                }
             }
             .onDisappear {
                 print("♻️ Cleaned up resources in EditableListView")
             }
         }
         .onAppear {
+            appDelegate.checkTrialExpiration()
+
             print("🔍 .onAppear triggered in EditableListView")
 
             setupOnAppear()
@@ -849,11 +849,29 @@ struct EditableListView: View {
             checkForRewardedAdTrigger()
             
             startInterstitialAdTimer()
+            
+            startTrialCheckTimer()
         }
         .onDisappear {
             adCheckTimer?.invalidate()
             adCheckTimer = nil
+            
+            stopTrialCheckTimer()
+            
             print("♻️ Cleaned up resources in EditableListView")
+        }
+        .alert("Trial Period Expired", isPresented: $showingTrialExpiredAlert) {
+            Button("Upgrade to Premium") {
+                // Show subscription screen
+                showSubscriptionScreen = true
+            }
+            Button("Continue with Ads") {
+                // Reset ad timer to show ads immediately
+                AppDelegate.shared.adManager.lastInterstitialAdTime = nil
+                AppDelegate.shared.adManager.lastAdTime = nil
+            }
+        } message: {
+            Text("Your 1-week trial has ended. You can now create up to 5 items total. Ads will be displayed. Upgrade to Premium for unlimited items and no ads.")
         }
         .alert(permissionManager.permissionAlertTitle, isPresented: $permissionManager.showPermissionAlert) {
             Button("Open Settings") {
@@ -884,25 +902,34 @@ struct EditableListView: View {
     }
     
     private func preloadAndShowInterstitialAd() {
-        // Create a temporary view model to test if ad can be loaded
-        let tempViewModel = InterstitialViewModel()
+        print("�� Attempting to show interstitial ad...")
         
-        tempViewModel.loadAndShowAd(
-            onDismissed: {
-                // Ad was dismissed normally
-            },
-            onAdReady: {
-                // Ad is ready, now show the sheet
-                DispatchQueue.main.async {
-                    self.isShowingInterstitialAd = true
-                    self.appDelegate.adManager.lastInterstitialAdTime = Date()
+        // Use the existing AdManager's interstitial view model instead of creating a new one
+        if let interstitialViewModel = appDelegate.adManager.interstitialViewModel {
+            interstitialViewModel.loadAndShowAd(
+                onDismissed: {
+                    print("✅ Interstitial ad dismissed")
+                    DispatchQueue.main.async {
+                        self.isShowingInterstitialAd = false
+                    }
+                },
+                onAdReady: {
+                    print("✅ Interstitial ad ready, showing sheet")
+                    DispatchQueue.main.async {
+                        self.isShowingInterstitialAd = true
+                        self.appDelegate.adManager.lastInterstitialAdTime = Date()
+                    }
+                },
+                onAdFailed: {
+                    print("❌ Interstitial ad failed to load")
+                    DispatchQueue.main.async {
+                        self.isShowingInterstitialAd = false
+                    }
                 }
-            },
-            onAdFailed: {
-                // Ad failed to load, don't show the sheet
-                print("Interstitial ad failed to load, not showing sheet")
-            }
-        )
+            )
+        } else {
+            print("❌ No interstitial view model available")
+        }
     }
     
     func checkForRewardedAdTrigger() {
@@ -1249,6 +1276,20 @@ struct EditableListView: View {
                 }
             }
         }
+    }
+    
+    private func startTrialCheckTimer() {
+        // Check every 3 hours (10,800 seconds)
+        trialCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+            print("🔍 Background trial check timer fired")
+            AppDelegate.shared.checkTrialExpiration()
+        }
+    }
+
+    // Add this function to stop the timer
+    private func stopTrialCheckTimer() {
+        trialCheckTimer?.invalidate()
+        trialCheckTimer = nil
     }
     
     // Helper function to set up on appear

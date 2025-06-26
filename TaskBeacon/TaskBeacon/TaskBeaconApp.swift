@@ -106,7 +106,7 @@ struct TaskBeaconApp: App {
                     
                     // Request notification permission
                     _ = await permissionManager.checkAndRequestPermission(for: .notifications)
-
+                    
                     // Ensure subscription status is up to date
                     await subscriptionsManager.updatePurchasedProducts()
                     
@@ -128,7 +128,11 @@ struct TaskBeaconApp: App {
                     appDelegate.adManager.entitlementManager = entitlementManager
                     scheduleDueDateNotifications()
                 }
-                .sheet(isPresented: $showOnboarding) {
+                .sheet(isPresented: $showOnboarding, onDismiss: {
+                    if !hasCompletedOnboarding {
+                        hasCompletedOnboarding = true
+                    }
+                }) {
                     OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
                 }
                 // Dismiss the onboarding sheet when completed
@@ -137,18 +141,6 @@ struct TaskBeaconApp: App {
                         showOnboarding = false
                     }
                 }
-//                .onAppear {
-//                    if !hasCompletedOnboarding {
-//                        showOnboarding = true
-//                    }
-//
-//                    appDelegate.adManager.entitlementManager = entitlementManager
-//
-//                    scheduleDueDateNotifications()
-//                }
-//                .sheet(isPresented: $showOnboarding) {
-//                    OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-//                }
         }
     }
     

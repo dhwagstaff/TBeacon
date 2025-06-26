@@ -76,6 +76,13 @@ class EntitlementManager: ObservableObject {
             Self.userDefaults.set(isPremium, forKey: "isPremiumUser")
             Self.userDefaults.synchronize() // Force immediate save
             
+            print("🔹 About to call AdManager refresh...")
+            
+            if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                appDelegate.adManager.refreshEntitlementStatus()
+                print("🔹 AdManager entitlement status refreshed")
+            }
+            
             print("🔹 EntitlementManager subscription status updated - isPremiumUser: \(isPremium), hasMonthly: \(hasMonthly), hasAnnual: \(hasAnnual)")
             print("🔹 UserDefaults synchronized")
         }

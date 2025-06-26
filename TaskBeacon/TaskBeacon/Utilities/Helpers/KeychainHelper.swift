@@ -46,4 +46,21 @@ class KeychainHelper {
         SecItemCopyMatching(query, &result)
         return result as? Data
     }
+    
+    // Add this method to your KeychainHelper class
+    func delete(service: String, account: String) {
+        let query = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+        ] as CFDictionary
+        
+        let status = SecItemDelete(query)
+        
+        if status != errSecSuccess && status != errSecItemNotFound {
+            print("Error deleting from Keychain: \(status)")
+        } else {
+            print("Successfully deleted from Keychain")
+        }
+    }
 }

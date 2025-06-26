@@ -21,7 +21,8 @@ class AdManager: ObservableObject {
 
     private var isSDKInitialized: Bool = false
     private var rewardedInterstitialViewModel: RewardedInterstitialViewModel?
-    private var interstitialViewModel: InterstitialViewModel?
+    
+    var interstitialViewModel: InterstitialViewModel?
 
     var lastAdTime: Date?
     var lastInterstitialAdTime: Date?
@@ -130,6 +131,12 @@ class AdManager: ObservableObject {
             return false
         }
         
+        let isOverLimit = FreeLimitChecker.isOverFreeLimit(isPremiumUser: isPremium, isEditingExistingItem: false)
+        if !isOverLimit {
+            print("🚫 Not showing interstitial ad - user is not over free limit")
+            return false
+        }
+        
         let now = Date()
         let sinceLastInterstitial = lastInterstitialAdTime.map { now.timeIntervalSince($0) } ?? .infinity
         let sinceLastRewarded = lastAdTime.map { now.timeIntervalSince($0) } ?? .infinity
@@ -167,6 +174,12 @@ class AdManager: ObservableObject {
             return
         }
 
+        let isPremium = entitlementManager?.isPremiumUser ?? false
+        if isPremium {
+            print("🔹 Skipping rewarded ad load - user is premium")
+            return
+        }
+        
         // Check consent before loading
         guard canRequestAds else {
             print("❌ Cannot load ad: No consent")
@@ -183,6 +196,18 @@ class AdManager: ObservableObject {
     }
     
     func loadInterstitialAd() {  // Add this
+        let isPremium = entitlementManager?.isPremiumUser ?? false
+        if isPremium {
+            print("🔹 Skipping interstitial ad load - user is premium")
+            return
+        }
+        
+        let isInTrial = FreeLimitChecker.isInTrialPeriod()
+        if isInTrial {
+            print("🔹 Skipping interstitial ad load - user is in trial period")
+            return
+        }
+
         guard canRequestAds else {
             print("❌ Cannot load interstitial ad: No consent")
             return
@@ -200,6 +225,13 @@ class AdManager: ObservableObject {
         print("🔄 AdManager refreshing entitlement status...")
         if let em = entitlementManager {
             print("🔍 Current premium status: \(em.isPremiumUser)")
+            
+            if em.isPremiumUser {
+                print("🔹 User is premium - disabling ads")
+                isAdLoading = false
+                isAdReady = false
+                // Cancel any pending ad loads
+            }
         } else {
             print("❌ No entitlement manager available")
         }

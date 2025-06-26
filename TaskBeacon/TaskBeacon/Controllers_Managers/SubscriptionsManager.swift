@@ -113,6 +113,11 @@ extension SubscriptionsManager {
                         hasAnnual: hasAnnual
                     )
                     
+                    if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                        appDelegate.adManager.refreshEntitlementStatus()
+                        print("🔹 AdManager updated after purchase")
+                    }
+                    
                     print("✅ Purchase completed - status updated immediately")
                 }
                 
@@ -191,11 +196,16 @@ extension SubscriptionsManager {
             self.isPremiumUser = isPremium
             
             // Update EntitlementManager
-            EntitlementManager.shared.updateSubscriptionStatus(
+            entitlementManager?.updateSubscriptionStatus(
                 isPremium: isPremium,
                 hasMonthly: hasMonthly,
                 hasAnnual: hasAnnual
             )
+            
+            if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+                appDelegate.adManager.refreshEntitlementStatus()
+                print("🔹 AdManager updated after purchase check")
+            }
             
             print("🔹 Premium User: \(isPremium), Ads Removed: \(hasRemovedAds)")
             print("🔹 Purchased Products: \(purchasedProductIDs)")
