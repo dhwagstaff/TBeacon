@@ -70,12 +70,12 @@ class ToDoListViewModel: ListsViewModel {
                       dueDate: Date,
                       priority: Int16,
                       latitude: Double?,
-                      longitude: Double?) {
+                      longitude: Double?) async {
         var newOrUpdatedToDoItem: ToDoItemEntity?
         
         Task {
             if toDoItem == nil {
-                newOrUpdatedToDoItem = toToDoItem(
+                newOrUpdatedToDoItem = self.toToDoItem(
                     task: taskName,
                     category: selectedCategory,
                     addressOrLocationName: needsLocation ? addressOrLocationName : Constants.emptyString,
@@ -102,11 +102,11 @@ class ToDoListViewModel: ListsViewModel {
             }
             
             if let item = newOrUpdatedToDoItem {
-                await saveToDoItemToCoreData(item: item)
+                await self.saveToDoItemToCoreData(item: item)
                 
                 if let uid = item.uid {
                     // Only monitor if the item has a location (user selected "Item Needs Location" and chose a location)
-                    if !(item.addressOrLocationName?.isEmpty ?? true) && item.latitude != 0 && item.longitude != 0 {                        locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),identifier: uid,item: item)
+                    if !(item.addressOrLocationName?.isEmpty ?? true) && item.latitude != 0 && item.longitude != 0 {                        self.locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),identifier: uid,item: item)
                     }
                 }
             }

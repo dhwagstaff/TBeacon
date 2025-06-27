@@ -38,11 +38,12 @@ struct UnifiedStoreSelectionView: View {
     @State private var didSaveLocation: Bool = false
     @State private var selectedLatitude: Double = 0
     @State private var selectedLongitude: Double = 0
-    @State private var selectedStoreName: String = ""
-    @State private var selectedStoreAddress: String = ""
+    @State private var selectedStoreName: String = Constants.emptyString
+    @State private var selectedStoreAddress: String = Constants.emptyString
     @State private var activeCategories: [String] = [Constants.allStores]
     @State private var showErrorAlert = false
-    @State private var errorMessage: String = ""
+    @State private var errorMessage: String = Constants.emptyString
+    @State private var isInitialLoading = true
     
     @Binding var isPresented: Bool
     @Binding var selectedStoreFilter: String
@@ -177,7 +178,8 @@ struct UnifiedStoreSelectionView: View {
             }
             
             // Data Loading (from both .onAppear and .task)
-            if locationManager.stores.isEmpty {
+            if locationManager.stores.isEmpty && isPresented {
+                print("�� Loading stores for UnifiedStoreSelectionView...")
                 // Load stores
                 await locationManager.loadStores()
                 locationManager.consolidateDuplicateStores()
@@ -188,6 +190,12 @@ struct UnifiedStoreSelectionView: View {
             
             // Update categories (from both)
             updateActiveCategories()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    isInitialLoading = false
+                }
+            }
         }
         .onChange(of: searchQuery) {
             
@@ -378,15 +386,20 @@ struct UnifiedStoreSelectionView: View {
         let onSelect: () -> Void
         
         private var isPreferredStore: Bool {
-            return !preferredStoreName.isEmpty &&
-                   store.name == preferredStoreName &&
-                   store.address == preferredStoreAddress
+            viewModel.isPreferredStore(store)
         }
+        
+//        private var isPreferredStore: Bool {
+//            return !preferredStoreName.isEmpty &&
+//                   store.name == preferredStoreName &&
+//                   store.address == preferredStoreAddress
+//        }
         
         var body: some View {
             HStack {
                 Button(action: {
-                    togglePreferredStore()
+                    viewModel.togglePreferredStore(isPreferredStore: isPreferredStore, store: store)
+                   // togglePreferredStore()
                 }) {
                     Image(systemName: isPreferredStore ? "star.fill" : "star")
                         .foregroundColor(isPreferredStore ? .yellow : .gray)
@@ -429,23 +442,23 @@ struct UnifiedStoreSelectionView: View {
             }
         }
         
-        private func togglePreferredStore() {
-            if isPreferredStore {
-                // Clear preferred store
-                preferredStoreName = ""
-                preferredStoreAddress = ""
-                preferredStoreLatitude = 0.0
-                preferredStoreLongitude = 0.0
-                print("🗑️ Cleared preferred store")
-            } else {
-                // Set this store as preferred store
-                preferredStoreName = store.name
-                preferredStoreAddress = store.address
-                preferredStoreLatitude = store.mapItem.placemark.coordinate.latitude
-                preferredStoreLongitude = store.mapItem.placemark.coordinate.longitude
-                print("⭐ Set preferred store: \(store.name)")
-            }
-        }
+//        private func togglePreferredStore() {
+//            if isPreferredStore {
+//                // Clear preferred store
+//                preferredStoreName = ""
+//                preferredStoreAddress = ""
+//                preferredStoreLatitude = 0.0
+//                preferredStoreLongitude = 0.0
+//                print("🗑️ Cleared preferred store")
+//            } else {
+//                // Set this store as preferred store
+//                preferredStoreName = store.name
+//                preferredStoreAddress = store.address
+//                preferredStoreLatitude = store.mapItem.placemark.coordinate.latitude
+//                preferredStoreLongitude = store.mapItem.placemark.coordinate.longitude
+//                print("⭐ Set preferred store: \(store.name)")
+//            }
+//        }
         
         private func formatDistance(_ distance: CLLocationDistance) -> String {
             let formatter = MKDistanceFormatter()
@@ -456,10 +469,8 @@ struct UnifiedStoreSelectionView: View {
     
     private var statusMessagesView: some View {
         Group {
-            if locationManager.isFetching {
-                if locationManager.stores.isEmpty {
-                    LoadingOverlay()
-                }
+            if isInitialLoading || locationManager.isFetching {
+                LoadingOverlay()
             } else if locationError {
                 locationErrorView
             } else if cannotFetch {

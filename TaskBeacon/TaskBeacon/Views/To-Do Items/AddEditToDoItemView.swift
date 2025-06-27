@@ -44,6 +44,7 @@ struct AddEditToDoItemView: View {
     @State private var selectedPlacemark: MKPlacemark?
     @State private var isShowingRewardedAd = false
     @State private var showHelpView = false
+    @State private var isSaving = false
 
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
@@ -190,19 +191,28 @@ struct AddEditToDoItemView: View {
                     leading: Button(Constants.cancel) { dismissSheet() }
                         .foregroundColor(.blue),
                     trailing: Button(Constants.save) {
-                        viewModel.saveToDoItem(toDoItem: toDoItem,
-                                               taskName: taskName,
-                                               selectedCategory: selectedCategory,
-                                               addressOrLocationName: addressOrLocationName,
-                                               needsLocation: needsLocation,
-                                               dueDate: dueDate,
-                                               priority: priority,
-                                               latitude: latitude,
-                                               longitude: longitude)
                         
-                        dismissSheet()
+                        guard !isSaving else { return }
+                        
+                        isSaving = true
+                        
+                        Task {
+                            await viewModel.saveToDoItem(toDoItem: toDoItem,
+                                                   taskName: taskName,
+                                                   selectedCategory: selectedCategory,
+                                                   addressOrLocationName: addressOrLocationName,
+                                                   needsLocation: needsLocation,
+                                                   dueDate: dueDate,
+                                                   priority: priority,
+                                                   latitude: latitude,
+                                                   longitude: longitude)
+                            
+                            isSaving = false
+                            
+                            dismissSheet()
+                        }
                     }
-                    .disabled(taskName.isEmpty)
+                    .disabled(taskName.isEmpty || isSaving)
                 )
                 .sheet(isPresented: $showMapPicker) {
                     MapView(
@@ -276,6 +286,13 @@ struct AddEditToDoItemView: View {
         }
         .sheet(isPresented: $showHelpView) {
             HelperView()
+        }
+        .onDisappear {
+            isSaving = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            // Pause any ongoing operations when app goes to background
+            isSaving = false
         }
     }
 

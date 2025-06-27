@@ -117,7 +117,7 @@ struct EditableListView: View {
     @State private var isPulsingInfoButton = false
     @State private var filterType: TodoFilterType = .none
     @State private var selectedPriority: Priority = .high
-    @State private var isShowingLoadingOverlay = false
+  //  @State private var isShowingLoadingOverlay = false
     @State private var expandedPriorities: Set<Priority> = Set(Priority.allCases)
     @State private var isPreferred: Bool = false
     @State private var taskBeaconRewardsIsShowing = false
@@ -556,9 +556,9 @@ struct EditableListView: View {
                         .id("shopping-list-\(refreshTrigger)-\(forceViewUpdate)")
                 }
                 
-                if isShowingLoadingOverlay {
-                    LoadingOverlay()
-                }
+//                if isShowingLoadingOverlay {
+//                    LoadingOverlay()
+//                }
             }
             .background(Color(.systemBackground))
             .navigationTitle("")
@@ -598,31 +598,35 @@ struct EditableListView: View {
                                 print("🔍 Shopping Item button tapped")
 
                                 selectedSegment = "Shopping"
+                                
+                                print("🔍 Setting showAddShoppingItem = true")
+                                showAddShoppingItem = true
+                                isShowingAnySheet = true
 
                                 // Show loading overlay
-                                withAnimation(.easeIn(duration: 0.3)) {
-                                    if locationManager.stores.isEmpty {
-                                        isShowingLoadingOverlay = true
-                                        
-                                        shoppingListViewModel.beginAddFlow {
-                                            print("🔍 Setting showAddShoppingItem = true")
-                                            showAddShoppingItem = true
-                                            isShowingAnySheet = true
-                                        }
-                                    } else {
-                                        isShowingLoadingOverlay = false
-                                        print("🔍 Setting showAddShoppingItem = true")
-                                        showAddShoppingItem = true
-                                        isShowingAnySheet = true
-                                    }
-                                }
+//                                withAnimation(.easeIn(duration: 0.3)) {
+//                                    if locationManager.stores.isEmpty {
+//                                        isShowingLoadingOverlay = true
+//                                        
+//                                        shoppingListViewModel.beginAddFlow {
+//                                            print("🔍 Setting showAddShoppingItem = true")
+//                                            showAddShoppingItem = true
+//                                            isShowingAnySheet = true
+//                                        }
+//                                    } else {
+//                                        isShowingLoadingOverlay = false
+//                                        print("🔍 Setting showAddShoppingItem = true")
+//                                        showAddShoppingItem = true
+//                                        isShowingAnySheet = true
+//                                    }
+//                                }
                                 
                                 // Hide loading overlay after 3 seconds
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-                                    withAnimation(.easeOut(duration: 0.3)) {
-                                        isShowingLoadingOverlay = false
-                                    }
-                                }
+//                                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+//                                    withAnimation(.easeOut(duration: 0.3)) {
+//                                        isShowingLoadingOverlay = false
+//                                    }
+//                                }
                             } label: {
                                 Label("Shopping Item", systemImage: ImageSymbolNames.cartFill)
                                     .foregroundColor(.blue)
@@ -1689,45 +1693,6 @@ struct EditableListView: View {
                 throttleTimer = nil
             }
         }
-    }
-}
-
-// Add this loading view component
-struct LoadingOverlay: View {
-    var body: some View {
-        ZStack {
-            Color(.systemBackground)
-                .opacity(0.9)
-                .edgesIgnoringSafeArea(.all)
-            
-            VStack(spacing: 20) {
-                ProgressView()
-                    .scaleEffect(2.0)  // Increased from 1.5
-                    .tint(.accentColor)
-                    .padding()
-                    .background(
-                        Circle()
-                            .fill(Color(.systemBackground))
-                            .shadow(radius: 5)
-                    )
-                
-                Text("Loading Stores...")
-                    .font(.title2)  // Increased from headline
-                    .fontWeight(.bold)  // Added bold
-                    .foregroundColor(.primary)
-                
-                Text("Finding stores near your location")
-                    .font(.headline)  // Increased from subheadline
-                    .foregroundColor(.secondary)
-            }
-            .padding(30)  // Increased padding
-            .background(
-                RoundedRectangle(cornerRadius: 20)  // Increased corner radius
-                    .fill(Color(.systemBackground))
-                    .shadow(radius: 15)  // Increased shadow
-            )
-        }
-        .transition(.opacity)
     }
 }
 

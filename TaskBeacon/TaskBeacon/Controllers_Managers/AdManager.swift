@@ -180,6 +180,12 @@ class AdManager: ObservableObject {
             return
         }
         
+        let isInTrial = FreeLimitChecker.isInTrialPeriod()
+        if isInTrial {
+            print("🔹 Skipping rewarded ad load - user is in trial period")
+            return
+        }
+        
         // Check consent before loading
         guard canRequestAds else {
             print("❌ Cannot load ad: No consent")

@@ -1206,12 +1206,19 @@ extension LocationManager: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        print("🎯 DID ENTER REGION CALLED: \(region.identifier)")
+        print("📍 Current monitored regions: \(locationManager.monitoredRegions.map { $0.identifier })")
+        print("��️ regionIDToItemMap keys: \(regionIDToItemMap.keys)")
+        print("🏪 storeRegionIDToItemsMap keys: \(storeRegionIDToItemsMap.keys)")
+
         let regionIdentifier = region.identifier
         let content = UNMutableNotificationContent()
         var itemsForNotification: [NSManagedObject] = []
         
         // Case 1: The entered region is for a To-Do Item
         if let todoItem = regionIDToItemMap[regionIdentifier] {
+            print("✅ Found ToDo item for region: \(regionIdentifier)")
+
             itemsForNotification.append(todoItem)
             content.title = "To-Do Reminder"
             if let locationName = todoItem.value(forKey: "addressOrLocationName") as? String {
@@ -1220,6 +1227,8 @@ extension LocationManager: CLLocationManagerDelegate {
         }
         // Case 2: The entered region is for a Store
         else if let shoppingItems = storeRegionIDToItemsMap[regionIdentifier] {
+            print("✅ Found Shopping items for region: \(regionIdentifier)")
+
             itemsForNotification = shoppingItems
             content.title = "Shopping Reminder"
             if let storeName = shoppingItems.first?.value(forKey: "storeName") as? String {
@@ -1229,10 +1238,15 @@ extension LocationManager: CLLocationManagerDelegate {
         // Case 3: Unrecognized region
         else {
             print("⚠️ Could not find matching data for region: \(regionIdentifier)")
+            print("🔍 Available region IDs in regionIDToItemMap: \(regionIDToItemMap.keys)")
+            print("🔍 Available region IDs in storeRegionIDToItemsMap: \(storeRegionIDToItemsMap.keys)")
+
+            print("⚠️ Could not find matching data for region: \(regionIdentifier)")
             return
         }
 
-        guard !itemsForNotification.isEmpty else { return }
+        guard !itemsForNotification.isEmpty else {         print("⚠️ No items found for notification")
+ return }
 
         // Build the notification body from all relevant items
         let itemNames = itemsForNotification.compactMap { item -> String? in
@@ -1258,6 +1272,10 @@ extension LocationManager: CLLocationManagerDelegate {
         
         // Use a unique identifier to ensure the notification is always delivered
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        
+        print("📱 Scheduling notification for region: \(regionIdentifier)")
+        print("📝 Notification content: \(content.title) - \(content.body)")
+
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {

@@ -34,9 +34,15 @@ struct MapView: View {
     @State private var latitude: Double?
     @State private var longitude: Double?
     @State private var isPreferred: Bool = false
+//    @State private var isShowingLoadingOverlay = false
 
     var mapIsForShoppingItem: Bool
     var onLocationSelected: ((CLLocationCoordinate2D, String, String) -> Void)?
+    
+    private var isPreferredStore: Bool {
+        guard let selected = selectedItem else { return false }
+        return shoppingListViewModel.isPreferredStore(selected)
+    }
     
     init(cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic),
          selectedItem: MKMapItem? = nil,
@@ -76,6 +82,17 @@ struct MapView: View {
                 if mapIsForShoppingItem {
                     Button("Show All Stores") {
                         showStoreSelectionSheet = true
+//                        withAnimation(.easeIn(duration: 0.3)) {
+//                            isShowingLoadingOverlay = true
+//                        }
+                        
+                        // Trigger store search and then show sheet
+//                        shoppingListViewModel.beginAddFlow {
+////                            withAnimation(.easeOut(duration: 0.3)) {
+//                                isShowingLoadingOverlay = false
+////                            }
+//                            showStoreSelectionSheet = true
+//                        }
                     }
                     .padding(.trailing)
                 }
@@ -125,16 +142,22 @@ struct MapView: View {
                 MapCompass()
                 MapScaleView()
             }
+            // ... existing code ...
             .onChange(of: selectedItem) {
                 if let item = selectedItem {
-                    let coordinate = item.placemark.coordinate
-                    let newRegion = MKCoordinateRegion(
-                        center: coordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-                    )
-                    mapRegion = newRegion
-                    cameraPosition = .region(newRegion)
-                    handleLocationSelection(item)
+                    // Add a small delay to prevent Metal texture conflicts
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        let coordinate = item.placemark.coordinate
+                        let newRegion = MKCoordinateRegion(
+                            center: coordinate,
+                            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+                        )
+                        mapRegion = newRegion
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            cameraPosition = .region(newRegion)
+                        }
+                        handleLocationSelection(item)
+                    }
                 }
             }
 
@@ -145,13 +168,28 @@ struct MapView: View {
                     // The "Use Location" button has been moved here and styled.
                     if let selected = selectedItem {
                         VStack(spacing: 15) {
-                            // Display the selected location's details
-                            VStack {
-                                Text(selected.name ?? "Selected Location")
-                                    .font(.headline)
-                                Text(addressString(for: selected.placemark))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                            HStack {
+                                Button(action: {
+                                    if let selected = selectedItem,
+                                       let storeOption = locationManager.createStoreOption(from: selected) {
+                                        shoppingListViewModel.togglePreferredStore(isPreferredStore: isPreferredStore, store: storeOption)
+                                    }
+                                }) {
+                                    Image(systemName: isPreferredStore ? "star.fill" : "star")
+                                        .foregroundColor(isPreferredStore ? .yellow : .gray)
+                                        .font(.system(size: 16))
+                                }
+                                .buttonStyle(BorderlessButtonStyle())
+                                .padding(.leading, 8)
+
+                                // Display the selected location's details
+                                VStack {
+                                    Text(selected.name ?? "Selected Location")
+                                        .font(.headline)
+                                    Text(addressString(for: selected.placemark))
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             
                             // The primary "Use This Location" button
@@ -227,18 +265,6 @@ struct MapView: View {
                     .onTapGesture {
                         selectLocation(item)
                     }
-                    
-//                    VStack(alignment: .leading) {
-//                        Text(item.name ?? "Result")
-//                            .font(.headline)
-//                        Text(addressString(for: item.placemark))
-//                            .font(.caption)
-//                            .foregroundColor(.secondary)
-//                    }
-//                    .contentShape(Rectangle())
-//                    .onTapGesture {
-//                        selectLocation(item)
-//                    }
                 }
                 .listStyle(.plain)
             }
@@ -277,6 +303,10 @@ struct MapView: View {
             .environmentObject(shoppingListViewModel)
             .environmentObject(locationManager)
         }
+        
+//        if isShowingLoadingOverlay {
+//            LoadingOverlay()
+//        }
     }
     
     private func isPreferredStore(_ item: MKMapItem) -> Bool {
@@ -338,7 +368,7 @@ struct MapView: View {
         
         // This is the key change:
         // 1. We specify we're looking for Points of Interest to get businesses, not just places.
-        request.resultTypes = .pointOfInterest
+        request.resultTypes = [.pointOfInterest, .address]
         
         // 2. We provide the user's location as a HINT. This helps rank local results
         // higher without filtering out more distant ones. This makes it behave
@@ -388,8 +418,23 @@ struct MapView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
         )
         mapRegion = newRegion
-        cameraPosition = .region(newRegion)
+        
+        // Use smooth animation instead of immediate change
+        withAnimation(.easeInOut(duration: 0.3)) {
+            cameraPosition = .region(newRegion)
+        }
     }
+    
+//    private func selectLocation(_ item: MKMapItem) {
+//        selectedItem = item
+//        let coordinate = item.placemark.coordinate
+//        let newRegion = MKCoordinateRegion(
+//            center: coordinate,
+//            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+//        )
+//        mapRegion = newRegion
+//        cameraPosition = .region(newRegion)
+//    }
     
     private func handleLocationSelection(_ item: MKMapItem) {
         let coordinate = item.placemark.coordinate
