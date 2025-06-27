@@ -33,6 +33,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         
         print("🔍 AppDelegate.init() called")
         print("🔍 Setting adManager.entitlementManager = \(entitlementManager)")
+        
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
 
         // Set the entitlementManager on the adManager
         adManager.entitlementManager = entitlementManager

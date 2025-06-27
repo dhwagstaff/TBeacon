@@ -18,7 +18,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
 
     override init() {
         super.init()
-        UNUserNotificationCenter.current().delegate = self
     }
     
     func requestNotificationPermission() {
