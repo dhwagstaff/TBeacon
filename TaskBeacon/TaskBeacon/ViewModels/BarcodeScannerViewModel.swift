@@ -121,8 +121,28 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                     newItem.lastEditor = "User"
                     newItem.isCompleted = false
                     newItem.priority = 2
+                
+                // ✅ AUTO-ASSIGN PREFERRED STORE
+                let preferredStoreName = UserDefaults.standard.string(forKey: "preferredStoreName") ?? ""
+                let preferredStoreAddress = UserDefaults.standard.string(forKey: "preferredStoreAddress") ?? ""
+                let preferredStoreLatitude = UserDefaults.standard.double(forKey: "preferredStoreLatitude")
+                let preferredStoreLongitude = UserDefaults.standard.double(forKey: "preferredStoreLongitude")
 
-                    // ✅ Handle Expiration Date
+                if !preferredStoreName.isEmpty && !preferredStoreAddress.isEmpty {
+                    newItem.storeName = preferredStoreName
+                    newItem.storeAddress = preferredStoreAddress
+                    newItem.latitude = preferredStoreLatitude
+                    newItem.longitude = preferredStoreLongitude
+                    print("✅ Auto-assigned preferred store: \(preferredStoreName)")
+                } else {
+                    newItem.storeName = Constants.emptyString
+                    newItem.storeAddress = Constants.emptyString
+                    newItem.latitude = 0.0
+                    newItem.longitude = 0.0
+                    print("⚠️ No preferred store set, item will appear in unassigned section")
+                }
+                
+                // ✅ Handle Expiration Date
                 if let expirationDateString = productData.expiration_date {
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd"

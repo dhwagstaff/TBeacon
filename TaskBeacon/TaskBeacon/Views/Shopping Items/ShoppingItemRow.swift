@@ -83,15 +83,17 @@ struct ShoppingItemRow: View {
                 Spacer()
                 
                 // Add subtle "more options" indicator for unassigned items
-                HStack {
-                    Spacer()
-                    Image(systemName: "ellipsis.circle")
-                        .frame(width: 50, height: 50)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .opacity(0.6)
+                if item.storeName == nil || item.storeName?.isEmpty == true {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "ellipsis.circle")
+                            .frame(width: 50, height: 50)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .opacity(0.6)
+                    }
+                    .padding(.trailing, 20)
                 }
-                .padding(.trailing, 20)
             }
             .padding(.vertical, 4)
         }

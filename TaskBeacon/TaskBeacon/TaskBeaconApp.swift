@@ -28,7 +28,7 @@ struct TaskBeaconApp: App {
     let persistenceController = PersistenceController.shared
     
     @StateObject private var locationManager: LocationManager
-    @StateObject private var notificationDelegate = NotificationDelegate()
+//    @StateObject private var notificationDelegate = NotificationDelegate()
     @StateObject private var entitlementManager = EntitlementManager.shared
     @StateObject private var subscriptionsManager: SubscriptionsManager
     @StateObject private var dataUpdateManager = DataUpdateManager()
@@ -73,7 +73,7 @@ struct TaskBeaconApp: App {
         
         // Initialize all StateObject properties
         self._locationManager = StateObject(wrappedValue: LocationManager.shared)
-        self._notificationDelegate = StateObject(wrappedValue: NotificationDelegate())
+//        self._notificationDelegate = StateObject(wrappedValue: NotificationDelegate())
         self._entitlementManager = StateObject(wrappedValue: entitlementManager)
         self._subscriptionsManager = StateObject(wrappedValue: subscriptionsManager)
         self._dataUpdateManager = StateObject(wrappedValue: DataUpdateManager())

@@ -5,16 +5,26 @@
 //  Created by Dean Wagstaff on 2/10/25.
 //
 
-import Foundation
+import AVFAudio
+import AVFoundation
 import CoreLocation
+import Foundation
+import SwiftUI
 import UserNotifications
 
 class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, ObservableObject {
+    @AppStorage("enableSpokenNotifications") private var enableSpokenNotifications: Bool = false {
+        didSet {
+            print("�� @AppStorage enableSpokenNotifications changed to: \(enableSpokenNotifications)")
+        }
+    }
     
     static let shared = NotificationDelegate() // ✅ Singleton instance
     
     var recentlyPresentedNotifications: Set<String> = []
     private let notificationCooldown: TimeInterval = 30 // 300 == 5 minutes
+    
+    private var speechSynthesizer = AVSpeechSynthesizer()
 
     override init() {
         super.init()
@@ -36,18 +46,149 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let identifier = notification.request.identifier
         
+        print(" willPresent called for notification: \(identifier)")
+        print("🔔 enableSpokenNotifications: \(enableSpokenNotifications)")
+        print("🔔 UserDefaults enableSpokenNotifications: \(UserDefaults.standard.bool(forKey: "enableSpokenNotifications"))")
+
         if recentlyPresentedNotifications.contains(identifier) {
+            print("🔔 Notification already recently presented, skipping")
             completionHandler([])
+            return  // ✅ Add this return statement
         }
         
         recentlyPresentedNotifications.insert(identifier)
-
+        
+        if enableSpokenNotifications {
+            print("🗣️ Spoken notifications enabled, attempting to speak")
+            speakNotification(notification)
+        } else {
+            print("🔇 Spoken notifications disabled")
+        }
+        
         completionHandler([.banner, .sound])
         
         DispatchQueue.main.asyncAfter(deadline: .now() + notificationCooldown) {
             self.recentlyPresentedNotifications.remove(identifier)
         }
     }
+    
+    private func speakNotification(_ notification: UNNotification) {
+        print("🗣️ App state: \(UIApplication.shared.applicationState.rawValue)")
+
+        let content = notification.request.content
+        
+        print("️ speakNotification called")
+        print("️ Content title: \(content.title ?? "nil")")
+        print("️ Content subtitle: \(content.subtitle ?? "nil")")
+        print("🗣️ Content body: \(content.body ?? "nil")")
+        
+        // Create a natural language message
+        var message = ""
+        
+        // ✅ Fix: Handle optional values properly
+        let title = content.title
+        
+        if !title.isEmpty {
+            message += title + ". "
+        }
+        
+        let subtitle = content.subtitle
+        
+        if !subtitle.isEmpty {
+            message += subtitle + ". "
+        }
+        
+        let body = content.body
+        
+        if !body.isEmpty {
+            message += body
+        }
+        
+        print("🗣️ Final message to speak: '\(message)'")
+        
+        // Don't speak if message is empty
+        guard !message.isEmpty else {
+            print("🔇 Message is empty, not speaking")
+            return
+        }
+        
+        // Create speech utterance
+        let utterance = AVSpeechUtterance(string: message)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.5 // Slower rate for clarity
+        utterance.pitchMultiplier = 1.0
+        utterance.volume = 0.8
+        
+        print("🗣️ About to speak utterance")
+        
+        // Speak the notification
+        speechSynthesizer.speak(utterance)
+        
+        print("🗣️ speak() called successfully")
+        print("🗣️ Speaking notification: \(message)")
+    }
+    
+//    func userNotificationCenter(_ center: UNUserNotificationCenter,
+//                                willPresent notification: UNNotification,
+//                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+//        let identifier = notification.request.identifier
+//        
+//        if recentlyPresentedNotifications.contains(identifier) {
+//            completionHandler([])
+//        }
+//        
+//        recentlyPresentedNotifications.insert(identifier)
+//        
+//        if enableSpokenNotifications {
+//            speakNotification(notification)
+//        }
+//        
+//        completionHandler([.banner, .sound])
+//        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + notificationCooldown) {
+//            self.recentlyPresentedNotifications.remove(identifier)
+//        }
+//    }
+    
+//    private func speakNotification(_ notification: UNNotification) {
+//        let content = notification.request.content
+//        
+//        // Create a natural language message
+//        var message = ""
+//        
+//        let title = content.title
+//        
+//        if !title.isEmpty {
+//            message += title + ". "
+//        }
+//        
+//        let subtitle = content.subtitle
+//        
+//        if !subtitle.isEmpty {
+//            message += subtitle + ". "
+//        }
+//        
+//        let body = content.body
+//        
+//        if !body.isEmpty {
+//            message += body
+//        }
+//        
+//        // Don't speak if message is empty
+//        guard !message.isEmpty else { return }
+//        
+//        // Create speech utterance
+//        let utterance = AVSpeechUtterance(string: message)
+//        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+//        utterance.rate = 0.5 // Slower rate for clarity
+//        utterance.pitchMultiplier = 1.0
+//        utterance.volume = 0.8
+//        
+//        // Speak the notification
+//        speechSynthesizer.speak(utterance)
+//        
+//        print("🗣️ Speaking notification: \(message)")
+//    }
     
     // Add UNUserNotificationCenterDelegate method to handle notification dismissal
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {

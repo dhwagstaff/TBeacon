@@ -18,6 +18,7 @@ struct SettingsView: View {
     @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
     @AppStorage("enableDarkMode") private var enableDarkMode: Bool = false
     @AppStorage("distanceUnit") private var distanceUnit: String = "meters"
+    @AppStorage("enableSpokenNotifications") private var enableSpokenNotifications: Bool = false
 
     @EnvironmentObject var subscriptionsManager: SubscriptionsManager
     @EnvironmentObject var preferredStoreManager: PreferredStoreManager
@@ -262,6 +263,38 @@ struct SettingsView: View {
                     Button("OK", role: .cancel) { }
                 } message: {
                     Text(formErrorDescription)
+                }
+                
+                Section(header: Text("Notifications")) {
+                    Button("Test Spoken Notification") {
+                        let content = UNMutableNotificationContent()
+                        content.title = "Test Notification"
+                        content.body = "This is a test of spoken notifications"
+                        content.sound = .default
+                        
+                        let request = UNNotificationRequest(
+                            identifier: "test_spoken_\(Date().timeIntervalSince1970)",
+                            content: content,
+                            trigger: nil
+                        )
+                        
+                        UNUserNotificationCenter.current().add(request) { error in
+                            if let error = error {
+                                print("❌ Test notification failed: \(error.localizedDescription)")
+                            } else {
+                                print("✅ Test notification scheduled")
+                            }
+                        }
+                    }
+                    
+                    Toggle("Spoken Notifications", isOn: $enableSpokenNotifications)
+                        .tint(.blue)
+                    
+                    if enableSpokenNotifications {
+                        Text("Siri will read your location-based reminders aloud")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Section(header: Text("Distance Units")) {

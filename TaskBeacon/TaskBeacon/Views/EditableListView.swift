@@ -139,8 +139,14 @@ struct EditableListView: View {
     }
     
     private var shouldShowRewardedAdSection: Bool {
-        !entitlementManager.isPremiumUser && appDelegate.adManager.canRequestAds
+        !entitlementManager.isPremiumUser &&
+        appDelegate.adManager.canRequestAds &&
+        !FreeLimitChecker.isInTrialPeriod()  // Add this check
     }
+    
+//    private var shouldShowRewardedAdSection: Bool {
+//        !entitlementManager.isPremiumUser && appDelegate.adManager.canRequestAds
+//    }
 
     private var shouldShowRewardedInterstitialAdView: Bool {
         shouldShowRewardedAdSection && !taskBeaconRewardsIsShowing && !appDelegate.adManager.isCancelled
@@ -177,7 +183,6 @@ struct EditableListView: View {
                             shoppingListContent
                         } else { // TO DO'S
                             todoListContent
-                                .frame(height: geometry.size.height * 0.9)
                         }
                     }
                     .listStyle(.plain)
@@ -401,17 +406,24 @@ struct EditableListView: View {
     private var todoListContent: some View {
         switch filterType {
         case .none:
-            List {
-                ForEach(Priority.allCases) { priority in
-                    Section(header: PrioritySectionHeader(priority: priority, itemCount: todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }.count)) {
-                        let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
-                        if items.isEmpty {
-                            EmptyItemsView()
-                        } else {
+            ForEach(Priority.allCases) { priority in
+                let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
+                if !items.isEmpty {
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { expandedPriorities.contains(priority) },
+                            set: { isExpanded in
+                                if isExpanded {
+                                    expandedPriorities.insert(priority)
+                                } else {
+                                    expandedPriorities.remove(priority)
+                                }
+                            }
+                        ),
+                        content: {
                             ForEach(items, id: \.objectID) { item in
                                 ToDoItemRow(item: item, showCategory: filterType == .category)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: todoRowHeight)
                                     .onTapGesture {
                                         selectedToDoItem = item
                                         showAddTodoItem = true
@@ -428,22 +440,26 @@ struct EditableListView: View {
                                         .tint(.red)
                                     }
                             }
+                        },
+                        label: {
+                            PrioritySectionHeader(priority: priority, itemCount: items.count)
                         }
-                    }
+                    )
+                    .background(Color(.systemBackground))
+                    .listRowBackground(Color(.systemBackground))
+                    .id("priority-\(priority.rawValue)-\(refreshTrigger)")
                 }
             }
-            .listStyle(.insetGrouped)
             
         case .priority:
-            List {
-                Section(header: PrioritySectionHeader(priority: selectedPriority, itemCount: filteredByPriorityItems.count)) {
-                    if filteredByPriorityItems.isEmpty {
-                        EmptyItemsView()
-                    } else {
-                        ForEach(filteredByPriorityItems, id: \.objectID) { item in
+            let items = filteredByPriorityItems
+            if !items.isEmpty {
+                DisclosureGroup(
+                    isExpanded: .constant(true), // Always expanded for single priority view
+                    content: {
+                        ForEach(items, id: \.objectID) { item in
                             ToDoItemRow(item: item, showCategory: filterType == .category)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: todoRowHeight)
                                 .onTapGesture {
                                     selectedToDoItem = item
                                     showAddTodoItem = true
@@ -460,21 +476,39 @@ struct EditableListView: View {
                                     .tint(.red)
                                 }
                         }
+                    },
+                    label: {
+                        PrioritySectionHeader(priority: selectedPriority, itemCount: items.count)
                     }
-                }
+                )
+                .background(Color(.systemBackground))
+                .listRowBackground(Color(.systemBackground))
+            } else {
+                EmptyItemsView()
             }
-            .listStyle(.insetGrouped)
             
         case .category:
             let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
-            List {
-                ForEach(grouped.keys.sorted(), id: \.self) { category in
-                    Section(header: CategorySectionHeader(category: category, itemCount: grouped[category]?.count ?? 0)) {
-                        if let items = grouped[category], !items.isEmpty {
+            ForEach(grouped.keys.sorted(), id: \.self) { category in
+                if let items = grouped[category], !items.isEmpty {
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { expandedCategories[category]?.contains(category) ?? false },
+                            set: { isExpanded in
+                                if isExpanded {
+                                    if expandedCategories[category] == nil {
+                                        expandedCategories[category] = Set<String>()
+                                    }
+                                    expandedCategories[category]?.insert(category)
+                                } else {
+                                    expandedCategories[category]?.remove(category)
+                                }
+                            }
+                        ),
+                        content: {
                             ForEach(items, id: \.objectID) { item in
                                 ToDoItemRow(item: item, showCategory: true)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: todoRowHeight)
                                     .onTapGesture {
                                         selectedToDoItem = item
                                         showAddTodoItem = true
@@ -491,15 +525,124 @@ struct EditableListView: View {
                                         .tint(.red)
                                     }
                             }
-                        } else {
-                            EmptyItemsView()
+                        },
+                        label: {
+                            CategorySectionHeader(category: category, itemCount: items.count)
                         }
-                    }
+                    )
+                    .background(Color(.systemBackground))
+                    .listRowBackground(Color(.systemBackground))
+                    .id("category-\(category)-\(refreshTrigger)")
                 }
             }
-            .listStyle(.insetGrouped)
         }
     }
+
+    // ... existing code ...
+
+    // ... existing code ...
+//    private var todoListContent: some View {
+//        switch filterType {
+//        case .none:
+//            List {
+//                ForEach(Priority.allCases) { priority in
+//                    Section(header: PrioritySectionHeader(priority: priority, itemCount: todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }.count)) {
+//                        let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
+//                        if items.isEmpty {
+//                            EmptyItemsView()
+//                        } else {
+//                            ForEach(items, id: \.objectID) { item in
+//                                ToDoItemRow(item: item, showCategory: filterType == .category)
+//                                    .frame(maxWidth: .infinity)
+//                                    .frame(height: todoRowHeight)
+//                                    .onTapGesture {
+//                                        selectedToDoItem = item
+//                                        showAddTodoItem = true
+//                                        isShowingAnySheet = true
+//                                    }
+//                                    .swipeActions(edge: .trailing) {
+//                                        Button(role: .destructive) {
+//                                            withAnimation {
+//                                                deleteToDoItem(item)
+//                                            }
+//                                        } label: {
+//                                            Label("Delete", systemImage: "trash")
+//                                        }
+//                                        .tint(.red)
+//                                    }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            .listStyle(.insetGrouped)
+//            
+//        case .priority:
+//            List {
+//                Section(header: PrioritySectionHeader(priority: selectedPriority, itemCount: filteredByPriorityItems.count)) {
+//                    if filteredByPriorityItems.isEmpty {
+//                        EmptyItemsView()
+//                    } else {
+//                        ForEach(filteredByPriorityItems, id: \.objectID) { item in
+//                            ToDoItemRow(item: item, showCategory: filterType == .category)
+//                                .frame(maxWidth: .infinity)
+//                                .frame(height: todoRowHeight)
+//                                .onTapGesture {
+//                                    selectedToDoItem = item
+//                                    showAddTodoItem = true
+//                                    isShowingAnySheet = true
+//                                }
+//                                .swipeActions(edge: .trailing) {
+//                                    Button(role: .destructive) {
+//                                        withAnimation {
+//                                            deleteToDoItem(item)
+//                                        }
+//                                    } label: {
+//                                        Label("Delete", systemImage: "trash")
+//                                    }
+//                                    .tint(.red)
+//                                }
+//                        }
+//                    }
+//                }
+//            }
+//            .listStyle(.insetGrouped)
+//            
+//        case .category:
+//            let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
+//            List {
+//                ForEach(grouped.keys.sorted(), id: \.self) { category in
+//                    Section(header: CategorySectionHeader(category: category, itemCount: grouped[category]?.count ?? 0)) {
+//                        if let items = grouped[category], !items.isEmpty {
+//                            ForEach(items, id: \.objectID) { item in
+//                                ToDoItemRow(item: item, showCategory: true)
+//                                    .frame(maxWidth: .infinity)
+//                                    .frame(height: todoRowHeight)
+//                                    .onTapGesture {
+//                                        selectedToDoItem = item
+//                                        showAddTodoItem = true
+//                                        isShowingAnySheet = true
+//                                    }
+//                                    .swipeActions(edge: .trailing) {
+//                                        Button(role: .destructive) {
+//                                            withAnimation {
+//                                                deleteToDoItem(item)
+//                                            }
+//                                        } label: {
+//                                            Label("Delete", systemImage: "trash")
+//                                        }
+//                                        .tint(.red)
+//                                    }
+//                            }
+//                        } else {
+//                            EmptyItemsView()
+//                        }
+//                    }
+//                }
+//            }
+//            .listStyle(.insetGrouped)
+//        }
+//    }
     
     init() {
         let context = PersistenceController.shared.container.viewContext
@@ -678,17 +821,27 @@ struct EditableListView: View {
                         if let item = item {
                             scannedItem = item
                             
-                            Task {
-                                var location: CLLocation?
-                                if let userCoordinate = self.userLocation {
-                                    location = CLLocation(latitude: userCoordinate.latitude, longitude: userCoordinate.longitude)
+                            if let storeName = item.storeName, !storeName.isEmpty {
+                                print("✅ Item has preferred store assigned: \(storeName)")
+                                // Don't show store selection - item is ready to use
+                                DispatchQueue.main.async {
+                                    self.refreshDataAndViews()
                                 }
-                                
-                                await locationManager.searchNearbyStores()
-                                
-                                await MainActor.run {
-                                    mkMapItems = locationManager.stores
-                                    showStoreSelectionSheet = true
+                            } else {
+                                print("⚠️ No preferred store assigned, showing store selection")
+
+                                Task {
+                                    var location: CLLocation?
+                                    if let userCoordinate = self.userLocation {
+                                        location = CLLocation(latitude: userCoordinate.latitude, longitude: userCoordinate.longitude)
+                                    }
+                                    
+                                    await locationManager.searchNearbyStores()
+                                    
+                                    await MainActor.run {
+                                        mkMapItems = locationManager.stores
+                                        showStoreSelectionSheet = true
+                                    }
                                 }
                             }
                         } else {
@@ -937,24 +1090,42 @@ struct EditableListView: View {
     }
     
     func checkForRewardedAdTrigger() {
-        print("🔍 Checking if should show rewarded ad...")
+        print("�� Checking if should show rewarded ad...")
         print("Is Premium User: \(entitlementManager.isPremiumUser)")
-        print("Has Monthly Subscription: \(entitlementManager.hasMonthlySubscription)")
-        print("Has Annual Subscription: \(entitlementManager.hasAnnualSubscription)")
-        print("Should Show Rewarded Ad Section: \(shouldShowRewardedAdSection)")
-        print("Is Over Free Limit: \(shoppingListViewModel.isOverFreeLimit())")
-        print("Can Show Limit Extension Reward: \(appDelegate.adManager.canShowLimitExtensionReward())")
+        print("Is In Trial: \(FreeLimitChecker.isInTrialPeriod())")
+        print("Can Request Ads: \(appDelegate.adManager.canRequestAds)")
         
-        // Add this debug line:
-        print("�� EntitlementManager instance: \(entitlementManager)")
-        print("�� EntitlementManager.shared instance: \(EntitlementManager.shared)")
-        print("🔍 Are they the same? \(entitlementManager === EntitlementManager.shared)")
-
-        if shoppingListViewModel.isOverFreeLimit() && appDelegate.adManager.canShowAd() && !isShowingRewardedAd {
+        // Only show rewarded ads if: not premium, not in trial, and can request ads
+        if !entitlementManager.isPremiumUser &&
+           !FreeLimitChecker.isInTrialPeriod() &&
+           appDelegate.adManager.canRequestAds &&
+           shoppingListViewModel.isOverFreeLimit() &&
+           appDelegate.adManager.canShowAd() &&
+           !isShowingRewardedAd {
             isShowingRewardedAd = true
             appDelegate.adManager.lastAdTime = Date()
         }
     }
+    
+//    func checkForRewardedAdTrigger() {
+//        print("🔍 Checking if should show rewarded ad...")
+//        print("Is Premium User: \(entitlementManager.isPremiumUser)")
+//        print("Has Monthly Subscription: \(entitlementManager.hasMonthlySubscription)")
+//        print("Has Annual Subscription: \(entitlementManager.hasAnnualSubscription)")
+//        print("Should Show Rewarded Ad Section: \(shouldShowRewardedAdSection)")
+//        print("Is Over Free Limit: \(shoppingListViewModel.isOverFreeLimit())")
+//        print("Can Show Limit Extension Reward: \(appDelegate.adManager.canShowLimitExtensionReward())")
+//        
+//        // Add this debug line:
+//        print("�� EntitlementManager instance: \(entitlementManager)")
+//        print("�� EntitlementManager.shared instance: \(EntitlementManager.shared)")
+//        print("🔍 Are they the same? \(entitlementManager === EntitlementManager.shared)")
+//
+//        if shoppingListViewModel.isOverFreeLimit() && appDelegate.adManager.canShowAd() && !isShowingRewardedAd {
+//            isShowingRewardedAd = true
+//            appDelegate.adManager.lastAdTime = Date()
+//        }
+//    }
     
     // Helper function for accessibility hint
     private func accessibilityHint(for item: ToDoItemEntity) -> String {
@@ -1720,6 +1891,7 @@ private struct PrioritySectionHeader: View {
     var body: some View {
         HStack {
             Text(priority.title)
+                .frame(height: 30)
                 .font(.headline)
                 .foregroundColor(priorityColor(for: priority.int16Value, colorScheme: colorScheme))
         }
@@ -1746,6 +1918,7 @@ private struct CategorySectionHeader: View {
 //                .background(Color(.systemGray5))
 //                .cornerRadius(12)
         }
+        .frame(height: 30)
     }
 }
 
