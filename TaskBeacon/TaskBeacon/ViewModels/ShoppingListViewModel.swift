@@ -745,6 +745,8 @@ class ShoppingListViewModel: ListsViewModel {
                 }
             }
         }
+        
+        RatingHelper.shared.requestRatingAfterItemAddition()
     }
     
     func saveShoppingItemToCoreData(item: ShoppingItemEntity) async {

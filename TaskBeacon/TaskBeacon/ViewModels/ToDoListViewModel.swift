@@ -111,6 +111,8 @@ class ToDoListViewModel: ListsViewModel {
                 }
             }
         }
+        
+        RatingHelper.shared.requestRatingAfterItemAddition()
     }
         
     func createDefaultToDoItem() -> ToDoItemEntity {
@@ -296,6 +298,8 @@ class ToDoListViewModel: ListsViewModel {
         }
         
         objectWillChange.send()
+        
+        RatingHelper.shared.requestRatingAfterTaskCompletion()
     }
     
     func removeCategory() {

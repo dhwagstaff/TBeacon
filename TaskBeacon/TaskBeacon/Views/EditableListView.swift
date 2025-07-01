@@ -210,14 +210,45 @@ struct EditableListView: View {
                 .listRowBackground(Color(.systemBackground))
         } else if shoppingListViewModel.shoppingItems.isEmpty {
             // Show a simple empty message when only shopping list is empty
-            Text("Your shopping list is empty")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
+            Section {
+                VStack(spacing: 20) {
+                    Text("Your shopping list is empty")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                    
+                    // Animated arrow pointing to add button
+                    HStack(spacing: 4) {
+                        Text("Tap")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: "plus.circle.fill")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                            .scaleEffect(isPulsingInfoButton ? 1.2 : 1.0)
+                            .opacity(isPulsingInfoButton ? 0.7 : 1.0)
+                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isPulsingInfoButton)
+                        
+                        Text("to add your first shopping item")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
                 .padding()
-                .listRowBackground(Color(.systemBackground))
+                .onAppear {
+                    // Start the pulsing animation
+                    Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+                        withAnimation(.easeInOut(duration: 1.5)) {
+                            isPulsingInfoButton.toggle()
+                        }
+                    }
+                }
+            }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color(.systemBackground))
         } else {
-           // shoppingListBanner
             unassignedItemsSection
             assignedItemsSection
         }
@@ -239,12 +270,23 @@ struct EditableListView: View {
                             Button(action: {
                                 showUnassignedItemsInfo = true
                             }) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.orange)
-                                    .font(.system(size: 16))
-                                    .scaleEffect(isPulsingInfoButton ? 1.3 : 1.0)
-                                    .opacity(isPulsingInfoButton ? 0.6 : 1.0)
+                                ZStack {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .foregroundColor(.orange)
+                                        .font(.system(size: 18))
+                                        .scaleEffect(isPulsingInfoButton ? 1.3 : 1.0)
+                                        .opacity(isPulsingInfoButton ? 0.6 : 1.0)
+                                    // Add a question mark badge
+                                    Text("?")
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .padding(2)
+                                        .background(Circle().fill(Color.orange))
+                                        .offset(x: 10, y: -10)
+                                }
                             }
+                            .accessibilityLabel("Store assignment help")
                             .buttonStyle(BorderlessButtonStyle())
                             .onAppear {
                                 // Start the pulsing animation
@@ -404,22 +446,105 @@ struct EditableListView: View {
     // To-do list content extracted to a separate builder
     @ViewBuilder
     private var todoListContent: some View {
-        switch filterType {
-        case .none:
-            ForEach(Priority.allCases) { priority in
-                let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
+        if todoListViewModel.toDoItems.isEmpty && shoppingListViewModel.shoppingItems.isEmpty {
+            EmptyStateView()
+                .environmentObject(shoppingListViewModel)
+                .environmentObject(todoListViewModel)
+                .listRowInsets(EdgeInsets())
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color(.systemBackground))
+        } else if todoListViewModel.toDoItems.isEmpty {
+            Section {
+                VStack(spacing: 20) {
+                    Text("Your to-do list is empty")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                    
+                    // Animated arrow pointing to add button
+                    HStack(spacing: 4) {
+                        Text("Tap")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: "plus.circle.fill")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                            .scaleEffect(isPulsingInfoButton ? 1.2 : 1.0)
+                            .opacity(isPulsingInfoButton ? 0.7 : 1.0)
+                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isPulsingInfoButton)
+                        
+                        Text("to add your first to-do item")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .padding()
+                .onAppear {
+                    // Start the pulsing animation
+                    Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+                        withAnimation(.easeInOut(duration: 1.5)) {
+                            isPulsingInfoButton.toggle()
+                        }
+                    }
+                }
+            }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color(.systemBackground))
+        } else {
+            switch filterType {
+            case .none:
+                ForEach(Priority.allCases) { priority in
+                    let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
+                    if !items.isEmpty {
+                        DisclosureGroup(
+                            isExpanded: Binding(
+                                get: { expandedPriorities.contains(priority) },
+                                set: { isExpanded in
+                                    if isExpanded {
+                                        expandedPriorities.insert(priority)
+                                    } else {
+                                        expandedPriorities.remove(priority)
+                                    }
+                                }
+                            ),
+                            content: {
+                                ForEach(items, id: \.objectID) { item in
+                                    ToDoItemRow(item: item, showCategory: filterType == .category)
+                                        .frame(maxWidth: .infinity)
+                                        .onTapGesture {
+                                            selectedToDoItem = item
+                                            showAddTodoItem = true
+                                            isShowingAnySheet = true
+                                        }
+                                        .swipeActions(edge: .trailing) {
+                                            Button(role: .destructive) {
+                                                withAnimation {
+                                                    deleteToDoItem(item)
+                                                }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                            .tint(.red)
+                                        }
+                                }
+                            },
+                            label: {
+                                PrioritySectionHeader(priority: priority, itemCount: items.count)
+                            }
+                        )
+                        .background(Color(.systemBackground))
+                        .listRowBackground(Color(.systemBackground))
+                        .id("priority-\(priority.rawValue)-\(refreshTrigger)")
+                    }
+                }
+                
+            case .priority:
+                let items = filteredByPriorityItems
                 if !items.isEmpty {
                     DisclosureGroup(
-                        isExpanded: Binding(
-                            get: { expandedPriorities.contains(priority) },
-                            set: { isExpanded in
-                                if isExpanded {
-                                    expandedPriorities.insert(priority)
-                                } else {
-                                    expandedPriorities.remove(priority)
-                                }
-                            }
-                        ),
+                        isExpanded: .constant(true), // Always expanded for single priority view
                         content: {
                             ForEach(items, id: \.objectID) { item in
                                 ToDoItemRow(item: item, showCategory: filterType == .category)
@@ -442,207 +567,66 @@ struct EditableListView: View {
                             }
                         },
                         label: {
-                            PrioritySectionHeader(priority: priority, itemCount: items.count)
+                            PrioritySectionHeader(priority: selectedPriority, itemCount: items.count)
                         }
                     )
                     .background(Color(.systemBackground))
                     .listRowBackground(Color(.systemBackground))
-                    .id("priority-\(priority.rawValue)-\(refreshTrigger)")
+                } else {
+                    EmptyItemsView()
                 }
-            }
-            
-        case .priority:
-            let items = filteredByPriorityItems
-            if !items.isEmpty {
-                DisclosureGroup(
-                    isExpanded: .constant(true), // Always expanded for single priority view
-                    content: {
-                        ForEach(items, id: \.objectID) { item in
-                            ToDoItemRow(item: item, showCategory: filterType == .category)
-                                .frame(maxWidth: .infinity)
-                                .onTapGesture {
-                                    selectedToDoItem = item
-                                    showAddTodoItem = true
-                                    isShowingAnySheet = true
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        withAnimation {
-                                            deleteToDoItem(item)
+                
+            case .category:
+                let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
+                ForEach(grouped.keys.sorted(), id: \.self) { category in
+                    if let items = grouped[category], !items.isEmpty {
+                        DisclosureGroup(
+                            isExpanded: Binding(
+                                get: { expandedCategories[category]?.contains(category) ?? false },
+                                set: { isExpanded in
+                                    if isExpanded {
+                                        if expandedCategories[category] == nil {
+                                            expandedCategories[category] = Set<String>()
                                         }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        expandedCategories[category]?.insert(category)
+                                    } else {
+                                        expandedCategories[category]?.remove(category)
                                     }
-                                    .tint(.red)
                                 }
-                        }
-                    },
-                    label: {
-                        PrioritySectionHeader(priority: selectedPriority, itemCount: items.count)
-                    }
-                )
-                .background(Color(.systemBackground))
-                .listRowBackground(Color(.systemBackground))
-            } else {
-                EmptyItemsView()
-            }
-            
-        case .category:
-            let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
-            ForEach(grouped.keys.sorted(), id: \.self) { category in
-                if let items = grouped[category], !items.isEmpty {
-                    DisclosureGroup(
-                        isExpanded: Binding(
-                            get: { expandedCategories[category]?.contains(category) ?? false },
-                            set: { isExpanded in
-                                if isExpanded {
-                                    if expandedCategories[category] == nil {
-                                        expandedCategories[category] = Set<String>()
-                                    }
-                                    expandedCategories[category]?.insert(category)
-                                } else {
-                                    expandedCategories[category]?.remove(category)
-                                }
-                            }
-                        ),
-                        content: {
-                            ForEach(items, id: \.objectID) { item in
-                                ToDoItemRow(item: item, showCategory: true)
-                                    .frame(maxWidth: .infinity)
-                                    .onTapGesture {
-                                        selectedToDoItem = item
-                                        showAddTodoItem = true
-                                        isShowingAnySheet = true
-                                    }
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            withAnimation {
-                                                deleteToDoItem(item)
+                            ),
+                            content: {
+                                ForEach(items, id: \.objectID) { item in
+                                    ToDoItemRow(item: item, showCategory: true)
+                                        .frame(maxWidth: .infinity)
+                                        .onTapGesture {
+                                            selectedToDoItem = item
+                                            showAddTodoItem = true
+                                            isShowingAnySheet = true
+                                        }
+                                        .swipeActions(edge: .trailing) {
+                                            Button(role: .destructive) {
+                                                withAnimation {
+                                                    deleteToDoItem(item)
+                                                }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
                                             }
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
+                                            .tint(.red)
                                         }
-                                        .tint(.red)
-                                    }
+                                }
+                            },
+                            label: {
+                                CategorySectionHeader(category: category, itemCount: items.count)
                             }
-                        },
-                        label: {
-                            CategorySectionHeader(category: category, itemCount: items.count)
-                        }
-                    )
-                    .background(Color(.systemBackground))
-                    .listRowBackground(Color(.systemBackground))
-                    .id("category-\(category)-\(refreshTrigger)")
+                        )
+                        .background(Color(.systemBackground))
+                        .listRowBackground(Color(.systemBackground))
+                        .id("category-\(category)-\(refreshTrigger)")
+                    }
                 }
             }
         }
     }
-
-    // ... existing code ...
-
-    // ... existing code ...
-//    private var todoListContent: some View {
-//        switch filterType {
-//        case .none:
-//            List {
-//                ForEach(Priority.allCases) { priority in
-//                    Section(header: PrioritySectionHeader(priority: priority, itemCount: todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }.count)) {
-//                        let items = todoListViewModel.toDoItems.filter { $0.priority == priority.rawValue }
-//                        if items.isEmpty {
-//                            EmptyItemsView()
-//                        } else {
-//                            ForEach(items, id: \.objectID) { item in
-//                                ToDoItemRow(item: item, showCategory: filterType == .category)
-//                                    .frame(maxWidth: .infinity)
-//                                    .frame(height: todoRowHeight)
-//                                    .onTapGesture {
-//                                        selectedToDoItem = item
-//                                        showAddTodoItem = true
-//                                        isShowingAnySheet = true
-//                                    }
-//                                    .swipeActions(edge: .trailing) {
-//                                        Button(role: .destructive) {
-//                                            withAnimation {
-//                                                deleteToDoItem(item)
-//                                            }
-//                                        } label: {
-//                                            Label("Delete", systemImage: "trash")
-//                                        }
-//                                        .tint(.red)
-//                                    }
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//            .listStyle(.insetGrouped)
-//            
-//        case .priority:
-//            List {
-//                Section(header: PrioritySectionHeader(priority: selectedPriority, itemCount: filteredByPriorityItems.count)) {
-//                    if filteredByPriorityItems.isEmpty {
-//                        EmptyItemsView()
-//                    } else {
-//                        ForEach(filteredByPriorityItems, id: \.objectID) { item in
-//                            ToDoItemRow(item: item, showCategory: filterType == .category)
-//                                .frame(maxWidth: .infinity)
-//                                .frame(height: todoRowHeight)
-//                                .onTapGesture {
-//                                    selectedToDoItem = item
-//                                    showAddTodoItem = true
-//                                    isShowingAnySheet = true
-//                                }
-//                                .swipeActions(edge: .trailing) {
-//                                    Button(role: .destructive) {
-//                                        withAnimation {
-//                                            deleteToDoItem(item)
-//                                        }
-//                                    } label: {
-//                                        Label("Delete", systemImage: "trash")
-//                                    }
-//                                    .tint(.red)
-//                                }
-//                        }
-//                    }
-//                }
-//            }
-//            .listStyle(.insetGrouped)
-//            
-//        case .category:
-//            let grouped = Dictionary(grouping: todoListViewModel.toDoItems) { $0.category ?? "Uncategorized" }
-//            List {
-//                ForEach(grouped.keys.sorted(), id: \.self) { category in
-//                    Section(header: CategorySectionHeader(category: category, itemCount: grouped[category]?.count ?? 0)) {
-//                        if let items = grouped[category], !items.isEmpty {
-//                            ForEach(items, id: \.objectID) { item in
-//                                ToDoItemRow(item: item, showCategory: true)
-//                                    .frame(maxWidth: .infinity)
-//                                    .frame(height: todoRowHeight)
-//                                    .onTapGesture {
-//                                        selectedToDoItem = item
-//                                        showAddTodoItem = true
-//                                        isShowingAnySheet = true
-//                                    }
-//                                    .swipeActions(edge: .trailing) {
-//                                        Button(role: .destructive) {
-//                                            withAnimation {
-//                                                deleteToDoItem(item)
-//                                            }
-//                                        } label: {
-//                                            Label("Delete", systemImage: "trash")
-//                                        }
-//                                        .tint(.red)
-//                                    }
-//                            }
-//                        } else {
-//                            EmptyItemsView()
-//                        }
-//                    }
-//                }
-//            }
-//            .listStyle(.insetGrouped)
-//        }
-//    }
     
     init() {
         let context = PersistenceController.shared.container.viewContext
@@ -687,7 +671,9 @@ struct EditableListView: View {
                     itemTypePicker
                     if selectedSegment == "To-Do" {
                         HStack {
-                            FilterMenuView(filterType: $filterType, selectedPriority: $selectedPriority)
+                            if !todoListViewModel.toDoItems.isEmpty {
+                                FilterMenuView(filterType: $filterType, selectedPriority: $selectedPriority)
+                            }
                                                     
                             Spacer()
                         }
@@ -698,10 +684,6 @@ struct EditableListView: View {
                     shoppingOrTodoList
                         .id("shopping-list-\(refreshTrigger)-\(forceViewUpdate)")
                 }
-                
-//                if isShowingLoadingOverlay {
-//                    LoadingOverlay()
-//                }
             }
             .background(Color(.systemBackground))
             .navigationTitle("")
@@ -745,32 +727,7 @@ struct EditableListView: View {
                                 print("🔍 Setting showAddShoppingItem = true")
                                 showAddShoppingItem = true
                                 isShowingAnySheet = true
-
-                                // Show loading overlay
-//                                withAnimation(.easeIn(duration: 0.3)) {
-//                                    if locationManager.stores.isEmpty {
-//                                        isShowingLoadingOverlay = true
-//                                        
-//                                        shoppingListViewModel.beginAddFlow {
-//                                            print("🔍 Setting showAddShoppingItem = true")
-//                                            showAddShoppingItem = true
-//                                            isShowingAnySheet = true
-//                                        }
-//                                    } else {
-//                                        isShowingLoadingOverlay = false
-//                                        print("🔍 Setting showAddShoppingItem = true")
-//                                        showAddShoppingItem = true
-//                                        isShowingAnySheet = true
-//                                    }
-//                                }
-                                
-                                // Hide loading overlay after 3 seconds
-//                                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-//                                    withAnimation(.easeOut(duration: 0.3)) {
-//                                        isShowingLoadingOverlay = false
-//                                    }
-//                                }
-                            } label: {
+                             } label: {
                                 Label("Shopping Item", systemImage: ImageSymbolNames.cartFill)
                                     .foregroundColor(.blue)
                             }
@@ -1106,26 +1063,6 @@ struct EditableListView: View {
             appDelegate.adManager.lastAdTime = Date()
         }
     }
-    
-//    func checkForRewardedAdTrigger() {
-//        print("🔍 Checking if should show rewarded ad...")
-//        print("Is Premium User: \(entitlementManager.isPremiumUser)")
-//        print("Has Monthly Subscription: \(entitlementManager.hasMonthlySubscription)")
-//        print("Has Annual Subscription: \(entitlementManager.hasAnnualSubscription)")
-//        print("Should Show Rewarded Ad Section: \(shouldShowRewardedAdSection)")
-//        print("Is Over Free Limit: \(shoppingListViewModel.isOverFreeLimit())")
-//        print("Can Show Limit Extension Reward: \(appDelegate.adManager.canShowLimitExtensionReward())")
-//        
-//        // Add this debug line:
-//        print("�� EntitlementManager instance: \(entitlementManager)")
-//        print("�� EntitlementManager.shared instance: \(EntitlementManager.shared)")
-//        print("🔍 Are they the same? \(entitlementManager === EntitlementManager.shared)")
-//
-//        if shoppingListViewModel.isOverFreeLimit() && appDelegate.adManager.canShowAd() && !isShowingRewardedAd {
-//            isShowingRewardedAd = true
-//            appDelegate.adManager.lastAdTime = Date()
-//        }
-//    }
     
     // Helper function for accessibility hint
     private func accessibilityHint(for item: ToDoItemEntity) -> String {

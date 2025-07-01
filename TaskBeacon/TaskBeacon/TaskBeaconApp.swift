@@ -121,6 +121,14 @@ struct TaskBeaconApp: App {
                     }
                 }
                 .onAppear {
+                    // Track app launch
+                    RatingHelper.shared.incrementLaunchCount()
+                    
+                    // Request rating after a delay (don't ask immediately)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        RatingHelper.shared.requestRating()
+                    }
+                    
                     // Only show onboarding if not completed
                     if !hasCompletedOnboarding {
                         showOnboarding = true
