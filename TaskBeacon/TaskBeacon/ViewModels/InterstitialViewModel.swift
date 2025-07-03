@@ -23,22 +23,29 @@ class InterstitialViewModel: NSObject, ObservableObject, FullScreenContentDelega
         self.onAdReady = onAdReady
         self.onAdFailed = onAdFailed
 
-        let adUnitID = "ca-app-pub-3940256099942544/4411468910" // Test Ad Unit ID
+        let adUnitID = "ca-app-pub-7371576916843305/8036047270" // "ca-app-pub-3940256099942544/4411468910" // Test Ad Unit ID
         
-        //            // live ad unit id
-        ////            interstitialAd = try await InterstitialAd.load(
-        ////                with: "ca-app-pub-7371576916843305/8036047270",
+                    // live ad unit id
+//            interstitialAd = try await InterstitialAd.load(
+//                        with: "ca-app-pub-7371576916843305/8036047270",
+        
+        print("�� Attempting to load interstitial ad with unit ID: \(adUnitID)")
+        print("🔍 MobileAds.shared.isSDKInitialized: \(MobileAds.shared)")
+
         do {
             try InterstitialAd.load(with: adUnitID, request: Request()) { [weak self] ad, error in
                 guard let self = self else { return }
                 
                 if let error = error {
                     print("Failed to load interstitial ad: \(error.localizedDescription)")
+                    print("🔍 Error details: \(error)")
                     self.onAdFailed?() // Call failure callback
                     self.onAdDismissed?() // Dismiss the sheet if loading fails
                     return
                 }
                 
+                print("✅ Interstitial ad loaded successfully")
+
                 self.interstitialAd = ad
                 self.interstitialAd?.fullScreenContentDelegate = self
                 
@@ -84,11 +91,11 @@ class InterstitialViewModel: NSObject, ObservableObject, FullScreenContentDelega
     
     // MARK: - GADFullScreenContentDelegate methods
     func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
-        print("Interstitial ad impression recorded")
+        print("💰 Interstitial ad impression recorded - Revenue event")
     }
     
     func adDidRecordClick(_ ad: FullScreenPresentingAd) {
-        print("Interstitial ad click recorded")
+        print("💰 Interstitial ad click recorded - Additional revenue event")
     }
     
     func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {

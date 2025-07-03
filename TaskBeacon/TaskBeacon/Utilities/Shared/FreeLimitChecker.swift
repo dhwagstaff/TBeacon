@@ -60,11 +60,11 @@ struct FreeLimitChecker {
         if let firstLaunch = getFirstLaunchDate() {
             let currentDate = Date()
             let elapsed = currentDate.timeIntervalSince(firstLaunch)
-            print("🔹 Trial check - First launch: \(firstLaunch)")
-            print("🔹 Trial check - Current date: \(currentDate)")
-            print("🔹 Trial check - Elapsed time: \(elapsed) seconds")
-            print("🔹 Trial check - Trial duration: \(TRIAL_DURATION) seconds")
-            print("🔹 Trial check - Is in trial: \(elapsed < TRIAL_DURATION)")
+//            print("🔹 Trial check - First launch: \(firstLaunch)")
+//            print("🔹 Trial check - Current date: \(currentDate)")
+//            print("🔹 Trial check - Elapsed time: \(elapsed) seconds")
+//            print("🔹 Trial check - Trial duration: \(TRIAL_DURATION) seconds")
+//            print("🔹 Trial check - Is in trial: \(elapsed < TRIAL_DURATION)")
             return elapsed < TRIAL_DURATION
         } else {
             // No first launch date saved, this is the first launch
@@ -133,10 +133,14 @@ struct FreeLimitChecker {
 //    }
     
     static func isOverFreeLimit(isPremiumUser: Bool, isEditingExistingItem: Bool) -> Bool {
-        guard !isPremiumUser else {         print("🔹 User is premium - not over limit")
- return false }
-        guard !isEditingExistingItem else {         print("🔹 Editing existing item - not over limit")
- return false } // Allow editing existing items
+        guard !isPremiumUser else {
+            print("🔹 User is premium - not over limit")
+            return false
+        }
+        guard !isEditingExistingItem else {
+            print("🔹 Editing existing item - not over limit")
+            return false
+        } // Allow editing existing items
 
         let context = PersistenceController.shared.container.viewContext
         let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)

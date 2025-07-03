@@ -13,7 +13,7 @@ struct FreeUserLimitView: View {
 
     @Binding var showSubscriptionSheet: Bool
     @Binding var showRewardedAd: Bool
-    
+        
     var body: some View {
         RoundedSectionBackground(
             backgroundColor: colorScheme == .dark ?
@@ -38,9 +38,19 @@ struct FreeUserLimitView: View {
                         .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 } else {
                     // Trial Period Ended
+                    Text("⏰ Your 1-week trial has expired")
+                        .foregroundColor(.orange)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .padding(.top, 8)
+
                     Text("🚫 Free users can only add up to 5 items total (shopping and to-do items combined).")
                         .foregroundColor(.red)
                         .font(.subheadline)
+                    
+                    Text("Upgrade to Premium for unlimited items and no ads!")
+                        .font(.footnote)
+                        .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 }
                 
                 Text("Choose an option to continue:")

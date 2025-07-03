@@ -16,6 +16,7 @@ struct AddEditShoppingItemView: View {
     @AppStorage("preferredStoreAddress") private var preferredStoreAddress: String = ""
     @AppStorage("preferredStoreLatitude") private var preferredStoreLatitude: Double = 0.0
     @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
+    @AppStorage("rewardedItemsCount") private var rewardedItemsCount: Int = 0
 
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) private var presentationMode
@@ -119,7 +120,7 @@ struct AddEditShoppingItemView: View {
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 16) {
-                        if viewModel.isOverFreeLimit(isEditingExistingItem: isEditingExistingItem) {
+                        if viewModel.isOverFreeLimit(isEditingExistingItem: isEditingExistingItem) && rewardedItemsCount >= 0 {
                             FreeUserLimitView(
                                 showSubscriptionSheet: $showSubscriptionSheet,
                                 showRewardedAd: $isShowingRewardedAd
@@ -159,10 +160,16 @@ struct AddEditShoppingItemView: View {
                                            locationManager: locationManager)
                     }
                     .sheet(isPresented: $isShowingRewardedAd) {
-                        RewardedInterstitialContentView(
-                            isPresented: $isShowingRewardedAd,
-                            navigationTitle: "Task Beacon"
-                        )
+                        DirectRewardedAdView(isPresented: $isShowingRewardedAd, onAdCompleted: {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                viewModel.objectWillChange.send()
+                            }
+                        })
+                        
+//                        RewardedInterstitialContentView(
+//                            isPresented: $isShowingRewardedAd,
+//                            navigationTitle: "Task Beacon"
+//                        )
                     }
                     .padding(.vertical, 16)
                 }

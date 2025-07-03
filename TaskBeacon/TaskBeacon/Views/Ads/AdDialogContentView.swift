@@ -21,16 +21,34 @@ struct AdDialogContentView: View {
     
     @Binding var isPresenting: Bool
     @Binding var countdownComplete: Bool
+    
+    var onSkip: (() -> Void)?
 
     var body: some View {
         ZStack {
-            Color.gray
+            Color.clear
                 .opacity(0.75)
                 .ignoresSafeArea(.all)
 
-            dialogBody
-                .background(Color.white)
-                .padding()
+            VStack {
+                Spacer()
+                
+                dialogBody
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    .padding(.horizontal, 24)
+                
+                Spacer()
+            }
+//            dialogBody
+//                .background(Color.white)
+//                .padding()
         }
     }
 
@@ -46,6 +64,8 @@ struct AdDialogContentView: View {
                 Spacer()
                 Button {
                     isPresenting = false
+                    
+                    onSkip?()
                 } label: {
                     Text("Skip")
                         .bold()

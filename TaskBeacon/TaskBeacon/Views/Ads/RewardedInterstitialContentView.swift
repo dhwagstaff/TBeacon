@@ -35,8 +35,10 @@ struct RewardedInterstitialContentView: View {
             rewardedInterstitialBody
 
             if showAdDialog {
-                AdDialogContentView(isPresenting: $showAdDialog, countdownComplete: $showAd)
-                    .opacity(showAdDialog ? 1 : 0)
+                AdDialogContentView(isPresenting: $showAdDialog, countdownComplete: $showAd, onSkip: {
+                    isPresented = false
+                })
+                .opacity(showAdDialog ? 1 : 0)
             }
         }
         .alert(isPresented: $showAdErrorAlert) {
@@ -107,7 +109,6 @@ struct RewardedInterstitialContentView: View {
                     .background(Color(hex: "1240AB"))
                     .cornerRadius(10)
             }
-           // .opacity(isAdReady ? 1 : 0)
             .padding()
             
             Button(action: {
@@ -203,89 +204,6 @@ struct RewardAnimationImageView: View {
         }
     }
 }
-
-//struct RewardAnimationImageView_Previews: PreviewProvider {
-//  static var previews: some View {
-//      RewardAnimationImageView()
-//  }
-//}
-
-//struct RewardedInterstitialContentView: View {
-//  @StateObject private var viewModel = RewardedInterstitialViewModel()
-//  @StateObject private var countdownTimer = CountdownTimer(10)
-//    
-//  @State private var showAdDialog = false
-//  @State private var showAd = false
-//    
-//  let navigationTitle: String
-//
-//  var body: some View {
-//    ZStack {
-//     // rewardedInterstitialBody
-//
-//      AdDialogContentView(isPresenting: $showAdDialog, countdownComplete: $showAd)
-//        .opacity(showAdDialog ? 1 : 0)
-//    }
-//  }
-//
-//  // [START show_ad]
-//  var rewardedInterstitialBody: some View {
-//    // [START_EXCLUDE] Hide from developer docs code snippet
-//    VStack(spacing: 20) {
-//      Text("The Impossible Game")
-//        .font(.largeTitle)
-//
-//      Spacer()
-//
-//      Text(countdownTimer.isComplete ? "Game over!" : "\(countdownTimer.timeLeft)")
-//        .font(.title2)
-//
-//      Button("Play Again") {
-//        startNewGame()
-//      }
-//      .font(.title2)
-//      .opacity(countdownTimer.isComplete ? 1 : 0)
-//
-//      Spacer()
-//
-//      HStack {
-//        Text("Coins: \(viewModel.coins)")
-//        Spacer()
-//      }
-//      .padding()
-//    }
-//    .onAppear {
-//      if !countdownTimer.isComplete {
-//        startNewGame()
-//      }
-//    }
-//    .onDisappear {
-//      countdownTimer.pause()
-//    }
-//    .onChange(of: countdownTimer.isComplete) {
-//      if countdownTimer.isComplete {
-//        showAdDialog = true
-//        viewModel.addCoins(1)
-//      }
-//      // [END_EXCLUDE]
-//    }
-//    .onChange(of: showAd, perform: { newValue in
-//        if newValue {
-//          viewModel.showAd()
-//        }
-//      }
-//    )
-//    // [END show_ad]
-//    .navigationTitle(navigationTitle)
-//  }
-//
-//  private func startNewGame() {
-//    countdownTimer.start()
-//    Task {
-//      await viewModel.loadAd()
-//    }
-//  }
-//}
 
 struct RewardedIntersititalContentView_Previews: PreviewProvider {
   static var previews: some View {

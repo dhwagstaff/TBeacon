@@ -12,6 +12,8 @@ import MapKit
 import UserNotifications
 
 struct AddEditToDoItemView: View {
+    @AppStorage("rewardedItemsCount") private var rewardedItemsCount: Int = 0
+
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) private var presentationMode
     
@@ -45,6 +47,7 @@ struct AddEditToDoItemView: View {
     @State private var isShowingRewardedAd = false
     @State private var showHelpView = false
     @State private var isSaving = false
+    @State private var refreshTrigger = UUID()
 
     @Binding var showAddTodoItem: Bool
     @Binding var isShowingAnySheet: Bool
@@ -99,9 +102,9 @@ struct AddEditToDoItemView: View {
             ZStack {
                 Color(.systemGroupedBackground)
                     .edgesIgnoringSafeArea(.all)
-
+                
                 Form {
-                    if viewModel.isOverFreeLimit(isEditingExistingItem: isEditingExistingItem) {
+                    if viewModel.isOverFreeLimit(isEditingExistingItem: isEditingExistingItem) && rewardedItemsCount >= 0 {
                         Section {
                             FreeUserLimitView(showSubscriptionSheet: $showSubscriptionSheet,
                                               showRewardedAd: $isShowingRewardedAd)
@@ -111,17 +114,17 @@ struct AddEditToDoItemView: View {
                     
                     TextField("Task Name", text: $taskName)
                         .foregroundColor(.primary)
-
+                    
                     PriorityPickerView(selectedPriority: $priority)
                     
                     Section(header: Text("Due Date")) {
                         Toggle("Item Needs Due Date", isOn: $showDatePicker)
                     }
-
+                    
                     if showDatePicker {
                         DatePicker("Date", selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
                     }
-
+                    
                     Section(header: Text("Category").foregroundColor(.primary)) {
                         Button(action: { showCategorySelection = true }) {
                             HStack {
@@ -138,6 +141,7 @@ struct AddEditToDoItemView: View {
                             ToDoCategorySelectionView(selectedCategory: $selectedCategory, context: viewContext)
                         }
                     }
+                    
                     Section(header: Text("Location/Address").foregroundColor(.primary)) {
                         HStack {
                             Image(systemName: "map")
@@ -146,7 +150,7 @@ struct AddEditToDoItemView: View {
                                 .frame(width: 20, height: 20)
                                 .foregroundColor(.accentColor)
                                 .padding(8)
-
+                            
                             Toggle("Item Needs Location", isOn: $needsLocation)
                                 .onChange(of: needsLocation) {
                                     if !needsLocation {
@@ -156,7 +160,7 @@ struct AddEditToDoItemView: View {
                                     }
                                 }
                         }
-
+                        
                         if needsLocation || !addressOrLocationName.isEmpty {
                             Section(
                                 header:
@@ -181,11 +185,28 @@ struct AddEditToDoItemView: View {
                     }
                 }
                 .sheet(isPresented: $isShowingRewardedAd) {
-                    RewardedInterstitialContentView(
-                        isPresented: $isShowingRewardedAd,
-                        navigationTitle: "Task Beacon"
-                    )
+                    DirectRewardedAdView(isPresented: $isShowingRewardedAd, onAdCompleted: {
+                        refreshTrigger = UUID()
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            viewModel.objectWillChange.send()
+                        }
+                    })
+                    //                    RewardedInterstitialContentView(isPresented: $isShowingRewardedAd,
+                    //                                                    navigationTitle: "Task Beacon"
+                    //                    )
                 }
+                .onChange(of: isShowingRewardedAd) {
+                    // Refresh the view when rewarded ad is dismissed
+                    if !isShowingRewardedAd {
+                        refreshTrigger = UUID()
+                        // Force a refresh of the limit check
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            viewModel.objectWillChange.send()
+                        }
+                    }
+                }
+                .id(refreshTrigger)
                 .navigationTitle(toDoItem == nil ? "New To-Do Item" : "Edit To-Do Item")
                 .navigationBarItems(
                     leading: Button(Constants.cancel) { dismissSheet() }
@@ -198,21 +219,21 @@ struct AddEditToDoItemView: View {
                         
                         Task {
                             await viewModel.saveToDoItem(toDoItem: toDoItem,
-                                                   taskName: taskName,
-                                                   selectedCategory: selectedCategory,
-                                                   addressOrLocationName: addressOrLocationName,
-                                                   needsLocation: needsLocation,
-                                                   dueDate: dueDate,
-                                                   priority: priority,
-                                                   latitude: latitude,
-                                                   longitude: longitude)
+                                                         taskName: taskName,
+                                                         selectedCategory: selectedCategory,
+                                                         addressOrLocationName: addressOrLocationName,
+                                                         needsLocation: needsLocation,
+                                                         dueDate: dueDate,
+                                                         priority: priority,
+                                                         latitude: latitude,
+                                                         longitude: longitude)
                             
                             isSaving = false
                             
                             dismissSheet()
                         }
                     }
-                    .disabled(taskName.isEmpty || isSaving)
+                        .disabled(taskName.isEmpty || isSaving)
                 )
                 .sheet(isPresented: $showMapPicker) {
                     MapView(

@@ -45,11 +45,16 @@ class GoogleMobileAdsConsentManager: NSObject {
         // For testing purposes, you can use UMPDebugGeography to simulate a location.
         let debugSettings = DebugSettings()
         
+        print("🔍 Starting consent gathering...")
+        print("🔍 Publisher ID: ca-app-pub-7371576916843305~3348902851")
+        print("�� Debug settings: \(debugSettings)")
+
+        
 //        debugSettings.testDeviceIdentifiers = ["6352B743-4C51-414E-98D1-30E98F63521E"]
         
         // put this back in to have my device set as a test device
-       // debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
-     //   debugSettings.geography = .EEA // Simulate being in the EEA to force consent form
+      //  debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
+        debugSettings.geography = .EEA // Simulate being in the EEA to force consent form
 
         parameters.debugSettings = debugSettings
         
@@ -62,9 +67,12 @@ class GoogleMobileAdsConsentManager: NSObject {
             // [START_EXCLUDE]
             guard requestConsentError == nil else {
                 print("❌ Consent info update failed: \(String(describing: requestConsentError?.localizedDescription))")
+                print("❌ Error details: \(String(describing: requestConsentError))")
                 
                 return consentGatheringComplete(requestConsentError)
             }
+            
+            print("✅ Consent info updated successfully")
             
             Task { @MainActor in
                 do {
@@ -78,6 +86,7 @@ class GoogleMobileAdsConsentManager: NSObject {
                     consentGatheringComplete(nil)
                 } catch {
                     print("❌ Error loading consent form: \(error.localizedDescription)")
+                    print("❌ Error details: \(error)")
                     
                     consentGatheringComplete(error)
                 }
@@ -87,17 +96,56 @@ class GoogleMobileAdsConsentManager: NSObject {
     
     /// Helper method to call the UMP SDK method to present the privacy options form.
     @MainActor func presentPrivacyOptionsForm() async throws {
+        print("🔍 presentPrivacyOptionsForm called")
+        
+        // First, request consent info update
+        let parameters = RequestParameters()
+        let debugSettings = DebugSettings()
+        
+        // Add your device as test device (remove this for production)
+        debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
+        
+        // TEMPORARY: Force consent form for testing (remove for production)
+        debugSettings.geography = .EEA  // This will force the consent form to show
+        
+        parameters.debugSettings = debugSettings
+        
+        // Request consent info update first
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { error in
+                if let error = error {
+                    print("❌ Consent info update failed: \(error.localizedDescription)")
+                    continuation.resume(throwing: error)
+                } else {
+                    print("✅ Consent info updated successfully")
+                    continuation.resume()
+                }
+            }
+        }
+        
+        // Now present the privacy options form
         do {
             try await ConsentForm.presentPrivacyOptionsForm(from: nil)
+            print("✅ Privacy options form presented successfully")
         } catch {
             print("❌ Error presenting privacy options form: \(error.localizedDescription)")
             throw error
         }
     }
     
+//    @MainActor func presentPrivacyOptionsForm() async throws {
+//        do {
+//            try await ConsentForm.presentPrivacyOptionsForm(from: nil)
+//        } catch {
+//            print("❌ Error presenting privacy options form: \(error.localizedDescription)")
+//            throw error
+//        }
+//    }
+    
     /// Method to initialize the Google Mobile Ads SDK. The SDK should only be initialized once.
     func startGoogleMobileAdsSDK() {
-        guard canRequestAds, !isMobileAdsStartCalled else { return }
+        guard canRequestAds, !isMobileAdsStartCalled else {             print("🔍 SDK start conditions - canRequestAds: \(canRequestAds), isMobileAdsStartCalled: \(isMobileAdsStartCalled)")
+ return }
         
         isMobileAdsStartCalled = true
         print("🚀 Starting Google Mobile Ads SDK...")

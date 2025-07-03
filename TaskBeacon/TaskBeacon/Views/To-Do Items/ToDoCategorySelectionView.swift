@@ -32,6 +32,7 @@ struct ToDoCategorySelectionView: View {
                 Section(header: Text("My Categories").foregroundColor(.primary)) {
                     // Add Custom Category Button
                     Button(action: {
+                        newCustomCategory = Constants.emptyString
                         showingAddCustomCategory = true
                         isCustomAlertCancelled = false
                     }) {

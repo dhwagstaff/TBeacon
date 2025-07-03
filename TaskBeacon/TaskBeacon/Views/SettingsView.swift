@@ -7,6 +7,7 @@
 
 import AVFoundation
 import MapKit
+import SafariServices
 import StoreKit
 import SwiftUI
 
@@ -41,6 +42,7 @@ struct SettingsView: View {
     @State private var selectedStoreAddress: String = ""
     @State private var selectedLatitude: Double = 0.0
     @State private var selectedLongitude: Double = 0.0
+    @State private var showPrivacyPolicy: Bool = false
 
     var radiusDisplay: String {
         let radiusMeters = UserDefaults.standard.double(forKey: "geofenceRadius")
@@ -61,6 +63,12 @@ struct SettingsView: View {
                     }) {
                         Label("Help & Guide", systemImage: "questionmark.circle.fill")
                             .foregroundColor(.blue)
+                    }
+                }
+                
+                Section(header: Text("Legal")) {
+                    Button("Privacy Policy") {
+                        showPrivacyPolicy = true
                     }
                 }
                 
@@ -242,12 +250,34 @@ struct SettingsView: View {
                     }
                     .disabled(isPrivacyOptionsButtonDisabled)
                     
-                    // Add consent status indicator
+                    Button("Force Consent Form (Debug)") {
+                        Task {
+                            do {
+                                print("�� Force consent form tapped")
+                                try await GoogleMobileAdsConsentManager.shared.presentPrivacyOptionsForm()
+                            } catch {
+                                print("❌ Force consent error: \(error.localizedDescription)")
+                                formErrorDescription = error.localizedDescription
+                                showPrivacyOptionsAlert = true
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                    
+                    // Improved consent status indicator
                     if !appDelegate.adManager.canRequestAds {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.yellow)
-                            Text("Ad consent required")
+                            Text("Ad consent required - Tap 'Privacy Settings' above")
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Ad consent granted")
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -264,6 +294,44 @@ struct SettingsView: View {
                 } message: {
                     Text(formErrorDescription)
                 }
+                
+//                Section(header: Text("Privacy")) {
+//                    Button("Privacy Settings") {
+//                        Task {
+//                            do {
+//                                try await GoogleMobileAdsConsentManager.shared.presentPrivacyOptionsForm()
+//                                // Update button state after presenting form
+//                                isPrivacyOptionsButtonDisabled = !GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+//                            } catch {
+//                                formErrorDescription = error.localizedDescription
+//                                showPrivacyOptionsAlert = true
+//                            }
+//                        }
+//                    }
+//                    .disabled(isPrivacyOptionsButtonDisabled)
+//                    
+//                    // Add consent status indicator
+//                    if !appDelegate.adManager.canRequestAds {
+//                        HStack {
+//                            Image(systemName: "exclamationmark.triangle.fill")
+//                                .foregroundColor(.yellow)
+//                            Text("Ad consent required")
+//                                .foregroundColor(.secondary)
+//                        }
+//                    }
+//                }
+//                .onAppear {
+//                    // Existing permission status updates
+//                    locationStatus = LocationManager.shared.authorizationStatus
+//                    
+//                    // Update privacy button state
+//                    isPrivacyOptionsButtonDisabled = !GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
+//                }
+//                .alert("Privacy Options Error", isPresented: $showPrivacyOptionsAlert) {
+//                    Button("OK", role: .cancel) { }
+//                } message: {
+//                    Text(formErrorDescription)
+//                }
                 
                 Section(header: Text("Notifications")) {
                     Button("Test Spoken Notification") {
@@ -405,6 +473,8 @@ struct SettingsView: View {
                 }
             }
             .padding(.top, -100)
+            .sheet(isPresented: $showPrivacyPolicy) {
+                SafariView(url: URL(string: "https://taskbeaconsupport.github.io/taskbeaconsupportandfeedback/PrivacyPolicy")!)            }
         }
         .navigationTitle("Settings")
         .toolbar {
@@ -526,6 +596,14 @@ struct SettingsView: View {
         guard let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") else { return }
         UIApplication.shared.open(url)
     }
+}
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
 #Preview {

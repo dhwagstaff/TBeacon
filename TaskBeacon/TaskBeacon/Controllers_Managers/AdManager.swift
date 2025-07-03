@@ -220,7 +220,10 @@ class AdManager: ObservableObject {
         }
         
         print("🔄 Loading new interstitial ad...")
-        
+        print("🔍 canRequestAds: \(canRequestAds)")
+        print("🔍 isSDKInitialized: \(isSDKInitialized)")
+        print("🔍 MobileAds.shared: \(MobileAds.shared)")
+
         Task {
             interstitialViewModel?.loadAndShowAd { }
         }
