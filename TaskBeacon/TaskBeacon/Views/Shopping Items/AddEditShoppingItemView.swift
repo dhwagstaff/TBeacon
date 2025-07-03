@@ -168,7 +168,7 @@ struct AddEditShoppingItemView: View {
                         
 //                        RewardedInterstitialContentView(
 //                            isPresented: $isShowingRewardedAd,
-//                            navigationTitle: "Task Beacon"
+//                            navigationTitle: "Echolist"
 //                        )
                     }
                     .padding(.vertical, 16)

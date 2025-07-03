@@ -16,7 +16,7 @@ class SubscriptionsManager: NSObject, ObservableObject {
     var purchasedProductIDs: Set<String> = []
 
     @Published var products: [StoreKit.Product] = []
-    @Published var taskBeaconProducts: [TaskBeacon.Product] = []
+    @Published var taskBeaconProducts: [Echolist.Product] = []
     @Published var hasLoadedProducts = false // Prevent multiple loads
     @Published var errorMessage: String = Constants.emptyString
     @Published var showErrorAlert = false
@@ -69,7 +69,7 @@ extension SubscriptionsManager {
 
                 // ✅ Convert StoreKit Products into TaskBeacon.Product for display
                 self.taskBeaconProducts = fetchedProducts.map { prods in
-                    TaskBeacon.Product(gtin: prods.id,
+                    Echolist.Product(gtin: prods.id,
                                        barcode: prods.id, // ✅ StoreKit uses `id`
                                        name: prods.displayName,
                                        brand: nil, // ✅ StoreKit does not provide brand info
@@ -79,7 +79,7 @@ extension SubscriptionsManager {
                 }
 
                 print("✅ StoreKit Products: \(self.products.count)")
-                print("✅ TaskBeacon Products: \(self.taskBeaconProducts.count)")
+                print("✅ Echolist Products: \(self.taskBeaconProducts.count)")
             }
 
         } catch {

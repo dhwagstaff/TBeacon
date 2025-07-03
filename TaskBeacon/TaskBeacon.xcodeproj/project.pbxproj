@@ -14,7 +14,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		5C3331542DDBFA5D006D6112 /* TaskBeacon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TaskBeacon.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C3331542DDBFA5D006D6112 /* Echolist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Echolist.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C9F07C62DDCC23300D68F41 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5CD2BF5B2DDCE8C200A0EA81 /* TaskBeacon.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaskBeacon.entitlements; sourceTree = "<group>"; };
 		5CDF3D952E0C390700CCBABE /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
@@ -57,7 +57,7 @@
 		5C3331552DDBFA5D006D6112 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5C3331542DDBFA5D006D6112 /* TaskBeacon.app */,
+				5C3331542DDBFA5D006D6112 /* Echolist.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,7 +95,7 @@
 				5CBAF0982DFC982B002CC5E9 /* FirebaseCrashlytics */,
 			);
 			productName = TaskBeacon;
-			productReference = 5C3331542DDBFA5D006D6112 /* TaskBeacon.app */;
+			productReference = 5C3331542DDBFA5D006D6112 /* Echolist.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -289,12 +289,12 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Task Beacon";
+				INFOPLIST_KEY_CFBundleDisplayName = Echolist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Need to access your camera for barcode scanning features";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Task Beacon needs your location for geofencing notifications and searching nearby stores";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Task Beacon needs your location for geofencing notifications and searching nearby stores";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Task Beacon needs your location for geofencing notifications and searching nearby stores";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Echolist needs your location for geofencing notifications and searching nearby stores";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Echolist needs your location for geofencing notifications and searching nearby stores";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Echolist needs your location for geofencing notifications and searching nearby stores";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This identifier will be used to deliver personalized ads to you.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -308,8 +308,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pocketmeapps.TaskBeacon;
-				PRODUCT_MODULE_NAME = TaskBeacon;
-				PRODUCT_NAME = TaskBeacon;
+				PRODUCT_MODULE_NAME = Echolist;
+				PRODUCT_NAME = Echolist;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -332,12 +332,12 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Task Beacon";
+				INFOPLIST_KEY_CFBundleDisplayName = Echolist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Need to access your camera for barcode scanning features";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Task Beacon needs your location for geofencing notifications and searching nearby stores";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Task Beacon needs your location for geofencing notifications and searching nearby stores";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Task Beacon needs your location for geofencing notifications and searching nearby stores";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Echolist needs your location for geofencing notifications and searching nearby stores";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Echolist needs your location for geofencing notifications and searching nearby stores";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Echolist needs your location for geofencing notifications and searching nearby stores";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This identifier will be used to deliver personalized ads to you.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -351,8 +351,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pocketmeapps.TaskBeacon;
-				PRODUCT_MODULE_NAME = TaskBeacon;
-				PRODUCT_NAME = TaskBeacon;
+				PRODUCT_MODULE_NAME = Echolist;
+				PRODUCT_NAME = Echolist;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;

@@ -50,7 +50,9 @@ class GoogleMobileAdsConsentManager: NSObject {
         print("�� Debug settings: \(debugSettings)")
 
         
-//        debugSettings.testDeviceIdentifiers = ["6352B743-4C51-414E-98D1-30E98F63521E"]
+     //   debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
+        
+        // live device id "6352B743-4C51-414E-98D1-30E98F63521E"
         
         // put this back in to have my device set as a test device
       //  debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]

@@ -23,7 +23,7 @@ struct OnboardingView: View {
 
     let onboardingSteps = [
         OnboardingStep(
-            title: "Welcome to TaskBeacon",
+            title: "Welcome to Echolist",
             subtitle: "Your smart shopping and task companion",
             description: "Organize shopping lists and to-do items with location-based reminders.",
             showAnimatedIcons: true
@@ -111,7 +111,7 @@ struct OnboardingView: View {
                 Button(action: {
                     showHelpView = true
                 }) {
-                    Text("Learn More About TaskBeacon")
+                    Text("Learn More About Echolist")
                         .font(.headline)
                         .foregroundColor(.blue)
                         .padding()

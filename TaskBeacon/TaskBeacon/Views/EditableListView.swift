@@ -761,12 +761,12 @@ struct EditableListView: View {
             .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
                 appDelegate.adManager.lastAdTime = Date()
             }) {
-                RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Task Beacon")
+                RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Echolist")
             }
             .sheet(isPresented: $isShowingInterstitialAd, onDismiss: {
                 appDelegate.adManager.lastInterstitialAdTime = Date()
             }) {
-                InterstitialContentView(isPresented: $isShowingInterstitialAd, navigationTitle: "Task Beacon")
+                InterstitialContentView(isPresented: $isShowingInterstitialAd, navigationTitle: "Echolist")
             }
             .fullScreenCover(isPresented: Binding(
                 get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },

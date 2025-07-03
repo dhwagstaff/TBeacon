@@ -14,7 +14,7 @@ struct SubscriptionScreen: View {
     
     @Binding var showSubscriptionScreen: Bool // Controls modal dismissal
     
-    @State private var selectedProduct: TaskBeacon.Product? = nil
+    @State private var selectedProduct: Echolist.Product? = nil
     @State private var isLoadingPurchase = false
     
     private let features: [String] = ["Remove all ads", "Unlimited To-Do & Shopping Items"]
@@ -126,7 +126,7 @@ extension SubscriptionScreen {
         List(subscriptionsManager.products, id: \.self) { product in
             Button(action: {
                 // ✅ Convert StoreKit.Product to TaskBeacon.Product before assignment
-                selectedProduct = TaskBeacon.Product(
+                selectedProduct = Echolist.Product(
                     gtin: product.id,
                     barcode: product.id, // ✅ StoreKit uses `id`
                     name: product.displayName,

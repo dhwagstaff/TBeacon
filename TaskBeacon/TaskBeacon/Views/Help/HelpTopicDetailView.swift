@@ -144,69 +144,6 @@ struct PermissionDetailView: View {
     }
 }
 
-//struct HelpTopicDetailView: View {
-//    let topic: HelpTopic
-//
-//    var body: some View {
-//        List {
-//            Section {
-//                VStack(alignment: .leading, spacing: 12) {
-//                    Text(topic.title)
-//                        .font(.title2)
-//                        .bold()
-//                    
-//                    if let subtitle = topic.subtitle, !subtitle.isEmpty {
-//                        Text(subtitle)
-//                            .font(.headline)
-//                            .foregroundColor(.secondary)
-//                    }
-//                    
-//                    Text(topic.content)
-//                        .font(.body)
-//                }
-//                .listRowInsets(EdgeInsets())
-//                .padding(.horizontal)
-//            }
-//            
-//            if let tips = topic.tips, !tips.isEmpty {
-//                Section("Tips") {
-//                    ForEach(tips, id: \.self) { tip in
-//                        Label(tip, systemImage: "lightbulb")
-//                            .foregroundColor(.yellow)
-//                    }
-//                }
-//            }
-//            
-//            if let steps = topic.steps, !steps.isEmpty {
-//                Section("Steps") {
-//                    ForEach(steps, id: \.self) { step in
-//                        Label(step, systemImage: "list.number")
-//                    }
-//                }
-//            }
-//            
-//            if let features = topic.features, !features.isEmpty {
-//                Section("Features") {
-//                    ForEach(features, id: \.self) { feature in
-//                        Label(feature, systemImage: "star")
-//                    }
-//                }
-//            }
-//            
-//            if let benefits = topic.benefits, !benefits.isEmpty {
-//                Section("Benefits") {
-//                    ForEach(benefits, id: \.self) { benefit in
-//                        Label(benefit, systemImage: "checkmark.seal")
-//                    }
-//                }
-//            }
-//        }
-//        .listStyle(.insetGrouped)
-//        .navigationTitle(topic.title)
-//        .navigationBarTitleDisplayMode(.inline)
-//    }
-//}
-
 //#Preview {
 //    HelpTopicDetailView()
 //}

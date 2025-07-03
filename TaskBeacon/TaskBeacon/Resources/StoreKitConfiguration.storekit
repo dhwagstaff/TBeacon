@@ -21,12 +21,12 @@
       "localizations" : [
         {
           "description" : "Unlimited reminders, alerts, and categories",
-          "displayName" : "Task Beacon Premium",
+          "displayName" : "Echolist Premium",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.pocketmeapps.TaskBeacon",
-      "referenceName" : "Task Beacon Premium",
+      "referenceName" : "Echolist Premium",
       "type" : "NonConsumable"
     }
   ],
@@ -91,7 +91,7 @@
       "localizations" : [
 
       ],
-      "name" : "Task Beacon Premium",
+      "name" : "Echolist Premium",
       "subscriptions" : [
         {
           "adHocOffers" : [
@@ -107,14 +107,14 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Task Beacon Premium unlimited items & no ads",
-              "displayName" : "Task Beacon Premium ($49.99 Annual)",
+              "description" : "Echolist Premium unlimited items & no ads",
+              "displayName" : "Echolist Premium ($49.99 Annual)",
               "locale" : "en_US"
             }
           ],
           "productID" : "PMA_TBPA_25",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Task Beacon Premium Annual",
+          "referenceName" : "Echolist Premium Annual",
           "subscriptionGroupID" : "21643130",
           "type" : "RecurringSubscription",
           "winbackOffers" : [
@@ -135,14 +135,14 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Task Beacon Premium unlimited items & ad-free",
-              "displayName" : "Task Beacon Premium ($4.99 Monthly)",
+              "description" : "Echolist Premium unlimited items & ad-free",
+              "displayName" : "Echolist Premium ($4.99 Monthly)",
               "locale" : "en_US"
             }
           ],
           "productID" : "PMA_TBPM_25",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Task Beacon Premium Monthly",
+          "referenceName" : "Echolist Premium Monthly",
           "subscriptionGroupID" : "21643130",
           "type" : "RecurringSubscription",
           "winbackOffers" : [

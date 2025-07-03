@@ -104,78 +104,9 @@ struct HelpContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
             }
-            
-//            ScrollView {
-//                LazyVStack(spacing: 0) {
-//                    ForEach(filteredSections) { section in
-//                        NavigationLink(destination: HelpSectionDetailView(section: section)) {
-//                            HStack {
-//                                Image(systemName: section.icon)
-//                                    .foregroundColor(Color(section.color))
-//                                    .frame(width: 24, height: 24)
-//                                
-//                                Text(section.title)
-//                                    .foregroundColor(.primary)
-//                                    .font(.headline)
-//                                    .fontWeight(.bold)
-//                                
-//                                Spacer()
-//                                
-//                                Image(systemName: "chevron.right")
-//                                    .foregroundColor(.secondary)
-//                                    .font(.caption)
-//                            }
-//                            .padding()
-//                            .background(Color(.systemBackground))
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
-//                        
-//                        Divider()
-//                            .padding(.leading, 56) // Align with text
-//                    }
-//                }
-//            }
         }
         .background(Color(.systemBackground))
     }
-    
-//    var body: some View {
-//        List {
-//            Text("Help Guide")
-//                .foregroundColor(.primary)
-//                .font(.title)
-//
-//            if #available(iOS 15.0, *) {
-//                Section {
-//                    TextField("Search Help", text: $searchText)
-//                        .textFieldStyle(.roundedBorder)
-//                }
-//            }
-//            
-//            ForEach(filteredSections) { section in
-//                NavigationLink(destination: HelpSectionDetailView(section: section)) {
-//                    HStack {
-//                        Image(systemName: section.icon)
-//                            .foregroundColor(Color(section.color))
-//                            .frame(width: 24, height: 24)
-//                        
-//                        Text(section.title)
-//                            .foregroundColor(.primary)
-//                            .font(.body)
-//                        
-//                        Spacer()
-//                        
-////                        Image(systemName: "chevron.right")
-////                            .foregroundColor(.secondary)
-////                            .font(.caption)
-//                    }
-//                }
-//                .listRowBackground(Color(.systemBackground))
-//            }
-//        }
-//        .listStyle(.insetGrouped)
-//        .background(Color(.systemBackground))
-//    }
 }
 
 //#Preview {

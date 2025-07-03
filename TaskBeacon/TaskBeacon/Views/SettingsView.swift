@@ -134,7 +134,7 @@ struct SettingsView: View {
                     if hasPremiumSubscription {
                         let subscriptionType = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ? "Monthly" : "Annual"
 
-                        Text("✅ You have Task Beacon Premium (\(subscriptionType))!")
+                        Text("✅ You have Echolist Premium (\(subscriptionType))!")
                             .foregroundColor(.green)
                             .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
 
@@ -474,7 +474,8 @@ struct SettingsView: View {
             }
             .padding(.top, -100)
             .sheet(isPresented: $showPrivacyPolicy) {
-                SafariView(url: URL(string: "https://taskbeaconsupport.github.io/taskbeaconsupportandfeedback/PrivacyPolicy")!)            }
+                SafariView(url: URL(string: "https://echolistapp.github.io/echolist/PrivacyPolicy")!)
+            }
         }
         .navigationTitle("Settings")
         .toolbar {

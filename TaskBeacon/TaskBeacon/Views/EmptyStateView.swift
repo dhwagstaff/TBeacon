@@ -44,7 +44,7 @@ struct EmptyStateView: View {
                 VStack(spacing: verticalSpacing + 15) {
                     Spacer(minLength: screenHeight * 0.10)
                     
-                    Text("Task Beacon")
+                    Text("Echolist")
                         .font(.system(size: 34, weight: .bold, design: .default))
                         .foregroundStyle(
                             LinearGradient(

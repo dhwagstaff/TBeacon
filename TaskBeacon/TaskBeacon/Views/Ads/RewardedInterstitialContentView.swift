@@ -70,7 +70,7 @@ struct RewardedInterstitialContentView: View {
                 .frame(height: 2)
                 .padding([.top, .bottom], 8)
             
-            Text("Task Beacon Rewards")
+            Text("Echolist Rewards")
                 .font(.title)
                 .foregroundStyle(
                     LinearGradient(

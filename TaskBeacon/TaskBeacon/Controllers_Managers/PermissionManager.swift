@@ -52,7 +52,7 @@ class PermissionManager: ObservableObject {
             case .notifications:
                 return "To receive reminders when you're near a store, please enable notifications in Settings."
             case .locationLimited:
-                return "Task Beacon needs 'Always Allow' location access to send you notifications when you're near stores with your shopping items. Without this, you won't receive location-based reminders when the app is in the background. Please go to Settings and change location access to 'Always Allow'."
+                return "Echolist needs 'Always Allow' location access to send you notifications when you're near stores with your shopping items. Without this, you won't receive location-based reminders when the app is in the background. Please go to Settings and change location access to 'Always Allow'."
             }
         }
     }

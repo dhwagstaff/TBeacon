@@ -193,7 +193,7 @@ struct AddEditToDoItemView: View {
                         }
                     })
                     //                    RewardedInterstitialContentView(isPresented: $isShowingRewardedAd,
-                    //                                                    navigationTitle: "Task Beacon"
+                    //                                                    navigationTitle: "Echolist"
                     //                    )
                 }
                 .onChange(of: isShowingRewardedAd) {

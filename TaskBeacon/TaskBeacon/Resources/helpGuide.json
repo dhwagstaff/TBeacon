@@ -1,5 +1,5 @@
 {
-  "appName": "Task Beacon",
+  "appName": "Echolist",
   "version": "1.0",
   "sections": [
     {
@@ -10,9 +10,9 @@
       "topics": [
         {
           "id": "welcome",
-          "title": "Welcome to Task Beacon",
+          "title": "Welcome to Echolist",
           "subtitle": "Your smart shopping and task companion",
-          "content": "Task Beacon helps you organize shopping lists and to-do items with location-based reminders. Get notified when you're near stores or task locations.",
+          "content": "Echolist helps you organize shopping lists and to-do items with location-based reminders. Get notified when you're near stores or task locations.",
           "image": "app.welcome",
           "tips": [
             "Tap the + button to add your first item",
@@ -24,7 +24,7 @@
           "id": "permissions",
           "title": "Required Permissions",
           "subtitle": "What we need and why it's critical",
-          "content": "TaskBeacon needs specific permissions to provide location-based reminders and smart notifications. Here's what each permission does and why it's essential:",
+          "content": "Echolist needs specific permissions to provide location-based reminders and smart notifications. Here's what each permission does and why it's essential:",
           "permissions": [
             {
               "name": "Location Access",
@@ -103,10 +103,10 @@
             }
           ],
           "tips": [
-            "If you accidentally deny 'Always Allow', go to Settings > Privacy & Security > Location Services > TaskBeacon to change it",
+            "If you accidentally deny 'Always Allow', go to Settings > Privacy & Security > Location Services > Echolist to change it",
             "You can manage all permissions in Settings > Privacy & Security",
             "Location data is only used for geofencing and is never shared with third parties",
-            "Notifications can be customized or disabled in Settings > Notifications > TaskBeacon"
+            "Notifications can be customized or disabled in Settings > Notifications > Echolist"
           ]
         }
       ]
@@ -297,10 +297,10 @@
           "id": "geofencing",
           "title": "Smart Location Reminders",
           "subtitle": "How location reminders work",
-          "content": "Task Beacon uses geofencing to provide smart location-based reminders:",
+          "content": "Echolist uses geofencing to provide smart location-based reminders:",
           "howItWorks": [
             "When you assign a store or location to an item",
-            "Task Beacon creates a virtual boundary around that location",
+            "Echolist creates a virtual boundary around that location",
             "When you enter the boundary, you receive a notification",
             "Notifications include all items for that location"
           ],
@@ -353,7 +353,7 @@
           "id": "product-info",
           "title": "Product Information",
           "subtitle": "What information is retrieved",
-          "content": "When you scan a barcode, Task Beacon retrieves:",
+          "content": "When you scan a barcode, Echolist retrieves:",
           "information": [
             "Product name and brand",
             "Category classification",
@@ -373,7 +373,7 @@
           "id": "free-vs-premium",
           "title": "Free vs Premium",
           "subtitle": "What's included in each plan",
-          "content": "Task Beacon offers both free and premium plans:",
+          "content": "Echolist offers both free and premium plans:",
           "plans": [
             {
               "name": "Free Plan",
@@ -432,7 +432,7 @@
           "id": "app-settings",
           "title": "App Settings",
           "subtitle": "Customize your experience",
-          "content": "Access settings to customize Task Beacon:",
+          "content": "Access settings to customize Echolist:",
           "settings": [
             "Notification preferences",
             "Location accuracy settings",
@@ -464,7 +464,7 @@
         {
           "id": "productivity-tips",
           "title": "Productivity Tips",
-          "subtitle": "Get the most out of Task Beacon",
+          "subtitle": "Get the most out of Echolist",
           "content": "Maximize your productivity with these tips:",
           "tips": [
             "Assign stores to all shopping items for better organization",
