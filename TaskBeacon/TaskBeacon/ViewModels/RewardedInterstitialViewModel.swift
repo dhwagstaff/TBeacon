@@ -29,12 +29,12 @@ class RewardedInterstitialViewModel: NSObject, ObservableObject, FullScreenConte
     func loadAd() async {
         do {
             // test ad unit id
-            rewardedInterstitialAd = try await RewardedInterstitialAd.load(
-                with: "ca-app-pub-3940256099942544/6978759866", request: Request())
+//            rewardedInterstitialAd = try await RewardedInterstitialAd.load(
+//                with: "ca-app-pub-3940256099942544/6978759866", request: Request())
 
             // live ad unit id
-//            rewardedInterstitialAd = try await RewardedInterstitialAd.load(
-//                with: "ca-app-pub-7371576916843305/3637351852", request: Request())
+            rewardedInterstitialAd = try await RewardedInterstitialAd.load(
+                with: "ca-app-pub-7371576916843305/3637351852", request: Request())
 
             rewardedInterstitialAd?.fullScreenContentDelegate = self
             

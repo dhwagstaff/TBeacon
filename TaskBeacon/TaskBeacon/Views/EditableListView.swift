@@ -30,6 +30,22 @@ enum ToDoRow: Identifiable {
     }
 }
 
+enum SheetType: Identifiable {
+    case help
+    case rewardedAd
+    case interstitialAd
+    case settings
+    
+    var id: String {
+        switch self {
+        case .help: return "help"
+        case .rewardedAd: return "rewardedAd"
+        case .interstitialAd: return "interstitialAd"
+        case .settings: return "settings"
+        }
+    }
+}
+
 enum TodoFilterType {
     case category
     case priority
@@ -117,7 +133,6 @@ struct EditableListView: View {
     @State private var isPulsingInfoButton = false
     @State private var filterType: TodoFilterType = .none
     @State private var selectedPriority: Priority = .high
-  //  @State private var isShowingLoadingOverlay = false
     @State private var expandedPriorities: Set<Priority> = Set(Priority.allCases)
     @State private var isPreferred: Bool = false
     @State private var taskBeaconRewardsIsShowing = false
@@ -129,6 +144,7 @@ struct EditableListView: View {
     @State private var showingTrialExpiredAlert = false
     @State private var showSubscriptionScreen = false
     @State private var trialCheckTimer: Timer?
+    @State private var activeSheet: SheetType?
 
     private static var isRefreshing = false
         
@@ -755,19 +771,42 @@ struct EditableListView: View {
             }
             .background(Color(.systemBackground))
             .navigationTitle("")
-            .sheet(isPresented: $showHelpView) {
-                HelperView()
+            // Replace the 4 conflicting .sheet modifiers with this coordinated system:
+            .sheet(item: $activeSheet) { sheetType in
+                switch sheetType {
+                case .help:
+                    HelperView()
+                case .rewardedAd:
+                    RewardedInterstitialContentView(isPresented: Binding(
+                        get: { activeSheet == .rewardedAd },
+                        set: { if !$0 { activeSheet = nil } }
+                    ), navigationTitle: "Echolist")
+                case .interstitialAd:
+                    InterstitialContentView(isPresented: Binding(
+                        get: { activeSheet == .interstitialAd },
+                        set: { if !$0 { activeSheet = nil } }
+                    ), navigationTitle: "Echolist")
+                case .settings:
+                    NavigationView {
+                        SettingsView()
+                            .environmentObject(preferredStoreManager)
+                            .environmentObject(subscriptionsManager)
+                    }
+                }
             }
-            .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
-                appDelegate.adManager.lastAdTime = Date()
-            }) {
-                RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Echolist")
-            }
-            .sheet(isPresented: $isShowingInterstitialAd, onDismiss: {
-                appDelegate.adManager.lastInterstitialAdTime = Date()
-            }) {
-                InterstitialContentView(isPresented: $isShowingInterstitialAd, navigationTitle: "Echolist")
-            }
+//            .sheet(isPresented: $showHelpView) {
+//                HelperView()
+//            }
+//            .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
+//                appDelegate.adManager.lastAdTime = Date()
+//            }) {
+//                RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Echolist")
+//            }
+//            .sheet(isPresented: $isShowingInterstitialAd, onDismiss: {
+//                appDelegate.adManager.lastInterstitialAdTime = Date()
+//            }) {
+//                InterstitialContentView(isPresented: $isShowingInterstitialAd, navigationTitle: "Echolist")
+//            }
             .fullScreenCover(isPresented: Binding(
                 get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
                 set: { isScanning = $0 }

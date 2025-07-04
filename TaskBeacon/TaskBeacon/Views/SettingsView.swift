@@ -250,21 +250,6 @@ struct SettingsView: View {
                     }
                     .disabled(isPrivacyOptionsButtonDisabled)
                     
-                    Button("Force Consent Form (Debug)") {
-                        Task {
-                            do {
-                                print("�� Force consent form tapped")
-                                try await GoogleMobileAdsConsentManager.shared.presentPrivacyOptionsForm()
-                            } catch {
-                                print("❌ Force consent error: \(error.localizedDescription)")
-                                formErrorDescription = error.localizedDescription
-                                showPrivacyOptionsAlert = true
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
-                    
                     // Improved consent status indicator
                     if !appDelegate.adManager.canRequestAds {
                         HStack {
@@ -295,66 +280,7 @@ struct SettingsView: View {
                     Text(formErrorDescription)
                 }
                 
-//                Section(header: Text("Privacy")) {
-//                    Button("Privacy Settings") {
-//                        Task {
-//                            do {
-//                                try await GoogleMobileAdsConsentManager.shared.presentPrivacyOptionsForm()
-//                                // Update button state after presenting form
-//                                isPrivacyOptionsButtonDisabled = !GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
-//                            } catch {
-//                                formErrorDescription = error.localizedDescription
-//                                showPrivacyOptionsAlert = true
-//                            }
-//                        }
-//                    }
-//                    .disabled(isPrivacyOptionsButtonDisabled)
-//                    
-//                    // Add consent status indicator
-//                    if !appDelegate.adManager.canRequestAds {
-//                        HStack {
-//                            Image(systemName: "exclamationmark.triangle.fill")
-//                                .foregroundColor(.yellow)
-//                            Text("Ad consent required")
-//                                .foregroundColor(.secondary)
-//                        }
-//                    }
-//                }
-//                .onAppear {
-//                    // Existing permission status updates
-//                    locationStatus = LocationManager.shared.authorizationStatus
-//                    
-//                    // Update privacy button state
-//                    isPrivacyOptionsButtonDisabled = !GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
-//                }
-//                .alert("Privacy Options Error", isPresented: $showPrivacyOptionsAlert) {
-//                    Button("OK", role: .cancel) { }
-//                } message: {
-//                    Text(formErrorDescription)
-//                }
-                
                 Section(header: Text("Notifications")) {
-                    Button("Test Spoken Notification") {
-                        let content = UNMutableNotificationContent()
-                        content.title = "Test Notification"
-                        content.body = "This is a test of spoken notifications"
-                        content.sound = .default
-                        
-                        let request = UNNotificationRequest(
-                            identifier: "test_spoken_\(Date().timeIntervalSince1970)",
-                            content: content,
-                            trigger: nil
-                        )
-                        
-                        UNUserNotificationCenter.current().add(request) { error in
-                            if let error = error {
-                                print("❌ Test notification failed: \(error.localizedDescription)")
-                            } else {
-                                print("✅ Test notification scheduled")
-                            }
-                        }
-                    }
-                    
                     Toggle("Spoken Notifications", isOn: $enableSpokenNotifications)
                         .tint(.blue)
                     
@@ -405,71 +331,6 @@ struct SettingsView: View {
                         Text("Medium").tag("medium")
                         Text("Low").tag("low")
                     }
-                }
-                
-                Section(header: Text("Debug Settings")) {
-                    HStack {
-                        Text("Current Trial Limit")
-                        Spacer()
-                        Text("\(FreeLimitChecker.getCurrentLimit())")
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Trial Limit Override")
-                        Spacer()
-                        Text("\(UserDefaults.standard.integer(forKey: "debug_trial_limit"))")
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Button("Set Trial Limit: 10") {
-                            UserDefaults.standard.set(10, forKey: "debug_trial_limit")
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button("Set Trial Limit: 50") {
-                            UserDefaults.standard.set(50, forKey: "debug_trial_limit")
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button("Clear Override") {
-                            UserDefaults.standard.removeObject(forKey: "debug_trial_limit")
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.red)
-                    }
-                    
-                    HStack {
-                        Text("Free Limit Override")
-                        Spacer()
-                        Text("\(UserDefaults.standard.integer(forKey: "debug_free_limit"))")
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Button("Set Free Limit: 3") {
-                            UserDefaults.standard.set(3, forKey: "debug_free_limit")
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button("Set Free Limit: 5") {
-                            UserDefaults.standard.set(5, forKey: "debug_free_limit")
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button("Clear Override") {
-                            UserDefaults.standard.removeObject(forKey: "debug_free_limit")
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.red)
-                    }
-                    
-                    Button("Reset Trial Data") {
-                        FreeLimitChecker.resetTrialForTesting()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
                 }
             }
             .padding(.top, -100)

@@ -45,19 +45,6 @@ class GoogleMobileAdsConsentManager: NSObject {
         // For testing purposes, you can use UMPDebugGeography to simulate a location.
         let debugSettings = DebugSettings()
         
-        print("🔍 Starting consent gathering...")
-        print("🔍 Publisher ID: ca-app-pub-7371576916843305~3348902851")
-        print("�� Debug settings: \(debugSettings)")
-
-        
-     //   debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
-        
-        // live device id "6352B743-4C51-414E-98D1-30E98F63521E"
-        
-        // put this back in to have my device set as a test device
-      //  debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
-        debugSettings.geography = .EEA // Simulate being in the EEA to force consent form
-
         parameters.debugSettings = debugSettings
         
         // [START request_consent_info_update]
@@ -103,13 +90,7 @@ class GoogleMobileAdsConsentManager: NSObject {
         // First, request consent info update
         let parameters = RequestParameters()
         let debugSettings = DebugSettings()
-        
-        // Add your device as test device (remove this for production)
-        debugSettings.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
-        
-        // TEMPORARY: Force consent form for testing (remove for production)
-        debugSettings.geography = .EEA  // This will force the consent form to show
-        
+                
         parameters.debugSettings = debugSettings
         
         // Request consent info update first
@@ -135,19 +116,9 @@ class GoogleMobileAdsConsentManager: NSObject {
         }
     }
     
-//    @MainActor func presentPrivacyOptionsForm() async throws {
-//        do {
-//            try await ConsentForm.presentPrivacyOptionsForm(from: nil)
-//        } catch {
-//            print("❌ Error presenting privacy options form: \(error.localizedDescription)")
-//            throw error
-//        }
-//    }
-    
     /// Method to initialize the Google Mobile Ads SDK. The SDK should only be initialized once.
     func startGoogleMobileAdsSDK() {
-        guard canRequestAds, !isMobileAdsStartCalled else {             print("🔍 SDK start conditions - canRequestAds: \(canRequestAds), isMobileAdsStartCalled: \(isMobileAdsStartCalled)")
- return }
+        guard canRequestAds, !isMobileAdsStartCalled else { return }
         
         isMobileAdsStartCalled = true
         print("🚀 Starting Google Mobile Ads SDK...")

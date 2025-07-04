@@ -112,88 +112,33 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
             return
         }
         
-        // Create speech utterance
-        let utterance = AVSpeechUtterance(string: message)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.5 // Slower rate for clarity
-        utterance.pitchMultiplier = 1.0
-        utterance.volume = 0.8
-        
-        print("🗣️ About to speak utterance")
-        
-        // Speak the notification
-        speechSynthesizer.speak(utterance)
-        
-        print("🗣️ speak() called successfully")
-        print("🗣️ Speaking notification: \(message)")
+        DispatchQueue.main.async {
+            // Create speech utterance
+            let utterance = AVSpeechUtterance(string: message)
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+            utterance.rate = 0.5 // Slower rate for clarity
+            utterance.pitchMultiplier = 1.0
+            utterance.volume = 0.8
+            
+            print("🗣️ About to speak utterance")
+            
+            // Speak the notification
+            self.speechSynthesizer.speak(utterance)
+            
+            print("🗣️ speak() called successfully")
+            print("🗣️ Speaking notification: \(message)")
+        }
     }
-    
-//    func userNotificationCenter(_ center: UNUserNotificationCenter,
-//                                willPresent notification: UNNotification,
-//                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-//        let identifier = notification.request.identifier
-//        
-//        if recentlyPresentedNotifications.contains(identifier) {
-//            completionHandler([])
-//        }
-//        
-//        recentlyPresentedNotifications.insert(identifier)
-//        
-//        if enableSpokenNotifications {
-//            speakNotification(notification)
-//        }
-//        
-//        completionHandler([.banner, .sound])
-//        
-//        DispatchQueue.main.asyncAfter(deadline: .now() + notificationCooldown) {
-//            self.recentlyPresentedNotifications.remove(identifier)
-//        }
-//    }
-    
-//    private func speakNotification(_ notification: UNNotification) {
-//        let content = notification.request.content
-//        
-//        // Create a natural language message
-//        var message = ""
-//        
-//        let title = content.title
-//        
-//        if !title.isEmpty {
-//            message += title + ". "
-//        }
-//        
-//        let subtitle = content.subtitle
-//        
-//        if !subtitle.isEmpty {
-//            message += subtitle + ". "
-//        }
-//        
-//        let body = content.body
-//        
-//        if !body.isEmpty {
-//            message += body
-//        }
-//        
-//        // Don't speak if message is empty
-//        guard !message.isEmpty else { return }
-//        
-//        // Create speech utterance
-//        let utterance = AVSpeechUtterance(string: message)
-//        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-//        utterance.rate = 0.5 // Slower rate for clarity
-//        utterance.pitchMultiplier = 1.0
-//        utterance.volume = 0.8
-//        
-//        // Speak the notification
-//        speechSynthesizer.speak(utterance)
-//        
-//        print("🗣️ Speaking notification: \(message)")
-//    }
     
     // Add UNUserNotificationCenterDelegate method to handle notification dismissal
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Get the notification identifier
         let identifier = response.notification.request.identifier
+        
+        if enableSpokenNotifications {
+            print("🗣️ Background notification received, attempting to speak")
+            speakNotification(response.notification)
+        }
         
         // Remove from notifiedRegionIDs if it was a region notification
         if LocationManager.shared.notifiedRegionIDs.contains(identifier) {
