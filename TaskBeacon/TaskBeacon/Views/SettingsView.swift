@@ -19,7 +19,7 @@ struct SettingsView: View {
     @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
     @AppStorage("enableDarkMode") private var enableDarkMode: Bool = false
     @AppStorage("distanceUnit") private var distanceUnit: String = "meters"
-    @AppStorage("enableSpokenNotifications") private var enableSpokenNotifications: Bool = false
+    @AppStorage("enableSpokenNotifications") private var enableSpokenNotifications: Bool = true
 
     @EnvironmentObject var subscriptionsManager: SubscriptionsManager
     @EnvironmentObject var preferredStoreManager: PreferredStoreManager
@@ -278,17 +278,6 @@ struct SettingsView: View {
                     Button("OK", role: .cancel) { }
                 } message: {
                     Text(formErrorDescription)
-                }
-                
-                Section(header: Text("Notifications")) {
-                    Toggle("Spoken Notifications", isOn: $enableSpokenNotifications)
-                        .tint(.blue)
-                    
-                    if enableSpokenNotifications {
-                        Text("Siri will read your location-based reminders aloud")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
                 }
                 
                 Section(header: Text("Distance Units")) {

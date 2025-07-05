@@ -10,8 +10,8 @@ import Foundation
 
 struct FreeLimitChecker {
     // Add a constant for the base free limit
-    private static let BASE_FREE_LIMIT = 3 // for testing purposes only return to 5 afterwards // 5  // Regular free limit
-    private static let TRIAL_LIMIT =  10 // for testing purposes only return to 50 when done // 50
+    private static let BASE_FREE_LIMIT = 5  // Regular free limit
+    private static let TRIAL_LIMIT =  50
     private static let TRIAL_DURATION_KEY = "trial_start_date"
     private static let TRIAL_DURATION: TimeInterval = 7 * 24 * 60 * 60  // 7 days in seconds
     

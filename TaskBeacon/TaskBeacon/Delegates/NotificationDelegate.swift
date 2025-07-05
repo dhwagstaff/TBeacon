@@ -13,10 +13,8 @@ import SwiftUI
 import UserNotifications
 
 class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, ObservableObject {
-    @AppStorage("enableSpokenNotifications") private var enableSpokenNotifications: Bool = false {
-        didSet {
-            print("�� @AppStorage enableSpokenNotifications changed to: \(enableSpokenNotifications)")
-        }
+    @AppStorage("enableSpokenNotifications") private var enableSpokenNotifications: Bool = true {
+        didSet {}
     }
     
     static let shared = NotificationDelegate() // ✅ Singleton instance
@@ -46,10 +44,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let identifier = notification.request.identifier
         
-        print(" willPresent called for notification: \(identifier)")
-        print("🔔 enableSpokenNotifications: \(enableSpokenNotifications)")
-        print("🔔 UserDefaults enableSpokenNotifications: \(UserDefaults.standard.bool(forKey: "enableSpokenNotifications"))")
-
         if recentlyPresentedNotifications.contains(identifier) {
             print("🔔 Notification already recently presented, skipping")
             completionHandler([])
@@ -59,10 +53,7 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         recentlyPresentedNotifications.insert(identifier)
         
         if enableSpokenNotifications {
-            print("🗣️ Spoken notifications enabled, attempting to speak")
             speakNotification(notification)
-        } else {
-            print("🔇 Spoken notifications disabled")
         }
         
         completionHandler([.banner, .sound])
@@ -136,7 +127,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         let identifier = response.notification.request.identifier
         
         if enableSpokenNotifications {
-            print("🗣️ Background notification received, attempting to speak")
             speakNotification(response.notification)
         }
         
