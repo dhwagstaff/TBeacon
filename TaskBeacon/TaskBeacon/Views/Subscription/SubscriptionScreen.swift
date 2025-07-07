@@ -42,6 +42,23 @@ struct SubscriptionScreen: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 30)
+            
+            HStack {
+                Button("Privacy Policy") {
+                    if let url = URL(string: "https://echolistapp.github.io/echolist/PrivacyPolicy.html") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Spacer()
+                Button("Terms of Use") {
+                    if let url = URL(string: "https://echolistapp.github.io/echolist/TermsOfUse.html") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
+            .font(.footnote)
+            .foregroundColor(.blue)
+            .padding(.top, 8)
         }
         .padding()
         .background(Color(.systemBackground))
@@ -169,6 +186,24 @@ extension SubscriptionScreen {
     private var purchaseSection: some View {
         VStack(alignment: .center, spacing: 15) {
             purchaseButtonView
+            
+            if let selected = selectedProduct {
+                VStack(alignment: .center, spacing: 6) {
+                    Text(selected.name)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("\(String(describing: selected.price)) \(selected.name.contains("Annual") ? "per year" : "per month"), auto-renews")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                    Text("Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 2)
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+            }
             
             Button("Restore Purchases") {
                 Task {

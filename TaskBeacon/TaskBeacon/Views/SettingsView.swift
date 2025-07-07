@@ -72,6 +72,17 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("Legal")) {
+                    Button("Privacy Policy") {
+                        showPrivacyPolicy = true
+                    }
+                    Button("Terms of Use") {
+                        if let url = URL(string: "https://echolistapp.github.io/echolist/TermsOfUse.html") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                }
+                
                 Section(header: Text("Preferred Store")) {
                     if !preferredStoreName.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
