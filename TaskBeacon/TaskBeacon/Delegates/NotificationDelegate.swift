@@ -68,11 +68,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
 
         let content = notification.request.content
         
-        print("️ speakNotification called")
-        print("️ Content title: \(content.title ?? "nil")")
-        print("️ Content subtitle: \(content.subtitle ?? "nil")")
-        print("🗣️ Content body: \(content.body ?? "nil")")
-        
         // Create a natural language message
         var message = ""
         
@@ -94,8 +89,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         if !body.isEmpty {
             message += body
         }
-        
-        print("🗣️ Final message to speak: '\(message)'")
         
         // Don't speak if message is empty
         guard !message.isEmpty else {
@@ -139,7 +132,11 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         completionHandler()
     }
     
-    func scheduleNotification(title: String, body: String, dueDate: Date? = nil, locationTrigger: CLCircularRegion? = nil) {
+    func scheduleNotification(title: String,
+                              body: String,
+                              dueDate: Date? = nil,
+                              locationTrigger: CLCircularRegion? = nil,
+                              identifier: String? = nil) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -150,13 +147,12 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         if let dueDate = dueDate {
             let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
             trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
-        }
-        else if let locationTrigger = locationTrigger {
+        } else if let locationTrigger = locationTrigger {
             trigger = UNLocationNotificationTrigger(region: locationTrigger, repeats: false)
         }
 
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: identifier ?? UUID().uuidString,
             content: content,
             trigger: trigger
         )

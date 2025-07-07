@@ -104,6 +104,10 @@ class ToDoListViewModel: ListsViewModel {
             if let item = newOrUpdatedToDoItem {
                 await self.saveToDoItemToCoreData(item: item)
                 
+                if let dueDate = item.dueDate {
+                    scheduleDueDateNotification(for: item, dueDate: dueDate)
+                }
+                
                 if let uid = item.uid {
                     // Only monitor if the item has a location (user selected "Item Needs Location" and chose a location)
                     if !(item.addressOrLocationName?.isEmpty ?? true) && item.latitude != 0 && item.longitude != 0 {                        self.locationManager.monitorRegionAtLocation(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),identifier: uid,item: item)
@@ -113,6 +117,27 @@ class ToDoListViewModel: ListsViewModel {
         }
         
         RatingHelper.shared.requestRatingAfterItemAddition()
+    }
+    
+    private func scheduleDueDateNotification(for item: ToDoItemEntity, dueDate: Date) {
+        let taskName = item.task ?? "To-Do Task"
+        let identifier = "todo_due_\(item.uid ?? UUID().uuidString)"
+        
+        // Cancel any existing notification for this item
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        
+        // Only schedule if the due date is in the future
+        if dueDate > Date() {
+            NotificationDelegate.shared.scheduleNotification(
+                title: "Task Due",
+                body: "Your task '\(taskName)' is due now.",
+                dueDate: dueDate,
+                identifier: identifier
+            )
+            print("✅ Scheduled due date notification for task: \(taskName) at \(dueDate)")
+        } else {
+            print("⚠️ Due date is in the past, not scheduling notification for: \(taskName)")
+        }
     }
         
     func createDefaultToDoItem() -> ToDoItemEntity {

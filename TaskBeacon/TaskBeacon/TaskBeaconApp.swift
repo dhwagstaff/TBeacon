@@ -156,25 +156,57 @@ struct TaskBeaconApp: App {
         do {
             let items: [ToDoItemEntity] = try CoreDataManager.shared().fetch(entityName: CoreDataEntities.toDoItem.stringValue, sortBy: [NSSortDescriptor(keyPath: \ToDoItemEntity.dueDate, ascending: true)])
             
-            let currentDate = Calendar.current.startOfDay(for: Date())
-            
             for item in items {
-                let taskName = item.task ?? "To-Do Task"
-
-                // ✅ Time-Based Notification only
-                if let dueDate = item.dueDate, Calendar.current.isDate(dueDate, inSameDayAs: currentDate) {
-                    NotificationDelegate.shared.scheduleNotification(
-                        title: "Task Reminder",
-                        body: "Your task '\(taskName)' is due today.",
-                        dueDate: dueDate
-                    )
+                if let dueDate = item.dueDate {
+                    // 🔧 FIX: Schedule notifications for all future due dates, not just today
+                    if dueDate > Date() {
+                        let taskName = item.task ?? "To-Do Task"
+                        let identifier = "todo_due_\(item.uid ?? UUID().uuidString)"
+                        
+                        // Cancel any existing notification for this item
+                        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+                        
+                        NotificationDelegate.shared.scheduleNotification(
+                            title: "Task Due",
+                            body: "Your task '\(taskName)' is due now.",
+                            dueDate: dueDate,
+                            identifier: identifier
+                        )
+                        print("✅ Scheduled due date notification for task: \(taskName) at \(dueDate)")
+                    } else {
+                        print("⚠️ Due date is in the past, not scheduling notification for: \(item.task ?? "Unknown Task")")
+                    }
                 }
-                // ❌ REMOVE location-based notification here
             }
 
         } catch {
             print("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
         }
     }
+    
+//    private func scheduleDueDateNotifications() {
+//        do {
+//            let items: [ToDoItemEntity] = try CoreDataManager.shared().fetch(entityName: CoreDataEntities.toDoItem.stringValue, sortBy: [NSSortDescriptor(keyPath: \ToDoItemEntity.dueDate, ascending: true)])
+//            
+//            let currentDate = Calendar.current.startOfDay(for: Date())
+//            
+//            for item in items {
+//                let taskName = item.task ?? "To-Do Task"
+//
+//                // ✅ Time-Based Notification only
+//                if let dueDate = item.dueDate, Calendar.current.isDate(dueDate, inSameDayAs: currentDate) {
+//                    NotificationDelegate.shared.scheduleNotification(
+//                        title: "Task Reminder",
+//                        body: "Your task '\(taskName)' is due today.",
+//                        dueDate: dueDate
+//                    )
+//                }
+//                // ❌ REMOVE location-based notification here
+//            }
+//
+//        } catch {
+//            print("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
+//        }
+//    }
 }
 

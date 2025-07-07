@@ -86,6 +86,8 @@ struct AddEditToDoItemView: View {
         _priority = State(initialValue: toDoItem?.priority ?? 2)
         _addressOrLocationName = State(initialValue: toDoItem?.addressOrLocationName ?? "")
         
+        _showDatePicker = State(initialValue: toDoItem?.dueDate != nil)
+        
         if let lat = toDoItem?.latitude, let lon = toDoItem?.longitude {
             _latitude = State(initialValue: lat)
             _longitude = State(initialValue: lon)
@@ -93,8 +95,10 @@ struct AddEditToDoItemView: View {
             _latitude = State(initialValue: LocationManager.shared.userLocation?.coordinate.latitude ?? 0.0)
             _longitude = State(initialValue: LocationManager.shared.userLocation?.coordinate.longitude ?? 0.0)
         }
+        
+        let hasLocationName = !(toDoItem?.addressOrLocationName?.isEmpty ?? true)
 
-        _needsLocation = State(initialValue: toDoItem?.latitude != nil && toDoItem?.longitude != nil)
+        _needsLocation = State(initialValue: hasLocationName)
     }
 
     var body: some View {
