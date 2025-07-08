@@ -138,34 +138,32 @@ extension SubscriptionScreen {
         .listStyle(.plain)
         .padding(.vertical, 20)
     }
-
+    
     private var productsListView: some View {
         List(subscriptionsManager.products, id: \.self) { product in
             Button(action: {
-                // ✅ Convert StoreKit.Product to TaskBeacon.Product before assignment
                 selectedProduct = Echolist.Product(
                     gtin: product.id,
-                    barcode: product.id, // ✅ StoreKit uses `id`
+                    barcode: product.id,
                     name: product.displayName,
-                    brand: nil, // ✅ StoreKit does not provide brand info
-                    category: nil, // ✅ StoreKit does not provide category info
+                    brand: nil,
+                    category: nil,
                     price: product.price.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD")),
-                    expirationDate: nil // ✅ StoreKit does not provide expiration date
+                    expirationDate: nil
                 )
             }) {
                 HStack {
-                    Text(product.displayName)
-                        .foregroundColor(.primary)
-                        .font(.system(.headline, design: .rounded))
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                        .frame(maxWidth: .infinity)
-                        .dynamicTypeSize(.large ... .accessibility5)
-                        .minimumScaleFactor(0.5)
-
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(product.displayName)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        // Show price and period/unit clearly
+                        Text("\(product.price.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD"))) \((product.subscription?.subscriptionPeriod.unit == .month) ? "per month" : (product.subscription?.subscriptionPeriod.unit == .year) ? "per year" : "")")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                     Spacer()
-                    if selectedProduct?.barcode == product.id { // ✅ Compare correctly using barcode
+                    if selectedProduct?.barcode == product.id {
                         Image(systemName: ImageSymbolNames.checkmarkCircleFill)
                             .foregroundColor(.blue)
                     } else {
@@ -181,6 +179,49 @@ extension SubscriptionScreen {
         .frame(height: CGFloat(subscriptionsManager.products.count) * 95)
         .listStyle(.plain)
     }
+
+//    private var productsListView: some View {
+//        List(subscriptionsManager.products, id: \.self) { product in
+//            Button(action: {
+//                // ✅ Convert StoreKit.Product to TaskBeacon.Product before assignment
+//                selectedProduct = Echolist.Product(
+//                    gtin: product.id,
+//                    barcode: product.id, // ✅ StoreKit uses `id`
+//                    name: product.displayName,
+//                    brand: nil, // ✅ StoreKit does not provide brand info
+//                    category: nil, // ✅ StoreKit does not provide category info
+//                    price: product.price.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD")),
+//                    expirationDate: nil // ✅ StoreKit does not provide expiration date
+//                )
+//            }) {
+//                HStack {
+//                    Text(product.displayName)
+//                        .foregroundColor(.primary)
+//                        .font(.system(.headline, design: .rounded))
+//                        .fontWeight(.bold)
+//                        .multilineTextAlignment(.center)
+//                        .padding(.horizontal)
+//                        .frame(maxWidth: .infinity)
+//                        .dynamicTypeSize(.large ... .accessibility5)
+//                        .minimumScaleFactor(0.5)
+//
+//                    Spacer()
+//                    if selectedProduct?.barcode == product.id { // ✅ Compare correctly using barcode
+//                        Image(systemName: ImageSymbolNames.checkmarkCircleFill)
+//                            .foregroundColor(.blue)
+//                    } else {
+//                        Image(systemName: ImageSymbolNames.circle)
+//                            .foregroundColor(.gray)
+//                    }
+//                }
+//                .padding()
+//            }
+//            .background(Color(.systemGray6))
+//            .cornerRadius(10)
+//        }
+//        .frame(height: CGFloat(subscriptionsManager.products.count) * 95)
+//        .listStyle(.plain)
+//    }
 
     
     private var purchaseSection: some View {
