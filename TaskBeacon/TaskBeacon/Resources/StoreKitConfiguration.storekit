@@ -108,7 +108,7 @@
           "localizations" : [
             {
               "description" : "Echolist Premium unlimited items & no ads",
-              "displayName" : "Echolist Premium ($49.99 Annual)",
+              "displayName" : "Premium Annual",
               "locale" : "en_US"
             }
           ],
@@ -136,7 +136,7 @@
           "localizations" : [
             {
               "description" : "Echolist Premium unlimited items & ad-free",
-              "displayName" : "Echolist Premium ($4.99 Monthly)",
+              "displayName" : "Premium Monthly",
               "locale" : "en_US"
             }
           ],
