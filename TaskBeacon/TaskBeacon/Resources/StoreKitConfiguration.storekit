@@ -25,7 +25,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.pocketmeapps.TaskBeacon",
+      "productID" : "com.pocketmeapps.TaskBeacon.Premium",
       "referenceName" : "Echolist Premium",
       "type" : "NonConsumable"
     }

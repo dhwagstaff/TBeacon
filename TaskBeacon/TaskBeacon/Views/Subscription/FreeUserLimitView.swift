@@ -81,6 +81,7 @@ struct FreeUserLimitView: View {
                 
                 // Premium Upgrade Button
                 Button(action: {
+                    showRewardedAd = false
                     showSubscriptionSheet = true
                 }) {
                     HStack {

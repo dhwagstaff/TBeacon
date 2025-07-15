@@ -298,6 +298,11 @@ struct AddEditToDoItemView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showSubscriptionSheet) {
+                SubscriptionScreen(showSubscriptionScreen: $showSubscriptionSheet)
+                    .environmentObject(entitlementManager)
+                    .environmentObject(subscriptionsManager)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

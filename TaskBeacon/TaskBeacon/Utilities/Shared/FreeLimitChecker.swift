@@ -22,8 +22,8 @@ struct FreeLimitChecker {
     private static let DEBUG_FREE_LIMIT_KEY = "debug_free_limit"
 
     // Keychain constants
-    private static let KEYCHAIN_SERVICE = "com.pocketmeapps.taskbeacon"
-    private static let KEYCHAIN_FIRST_LAUNCH_KEY = "first_launch_date"
+    /*private*/ static let KEYCHAIN_SERVICE = "com.pocketmeapps.taskbeacon"
+    /*private*/ static let KEYCHAIN_FIRST_LAUNCH_KEY = "first_launch_date"
     
     // Helper function to get the effective trial limit (with debug override)
     private static func getEffectiveTrialLimit() -> Int {

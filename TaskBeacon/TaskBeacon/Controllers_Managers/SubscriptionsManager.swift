@@ -11,8 +11,8 @@ import SwiftUI
 
 @MainActor
 class SubscriptionsManager: NSObject, ObservableObject {
-    let premiumIDs = ["PMA_TBPM_25", "PMA_TBPA_25"]
-    let productIDs: [String] = ["PMA_TBPM_25", "PMA_TBPA_25", "REMOVE_ADS"]
+    let premiumIDs = ["PMA_TBPM_25", "PMA_TBPA_25", "com.pocketmeapps.TaskBeacon.Premium"]
+    let productIDs: [String] = ["PMA_TBPM_25", "PMA_TBPA_25", "REMOVE_ADS", "com.pocketmeapps.TaskBeacon.Premium"]
     var purchasedProductIDs: Set<String> = []
 
     @Published var products: [StoreKit.Product] = []
@@ -104,7 +104,8 @@ extension SubscriptionsManager {
                 await MainActor.run {
                     let hasMonthly = purchasedProductIDs.contains("PMA_TBPM_25")
                     let hasAnnual = purchasedProductIDs.contains("PMA_TBPA_25")
-                    let isPremium = hasMonthly || hasAnnual
+                    let hasLifetime = purchasedProductIDs.contains("com.pocketmeapps.TaskBeacon.Premium")
+                    let isPremium = hasMonthly || hasAnnual || hasLifetime
                     
                     // Update EntitlementManager immediately
                     EntitlementManager.shared.updateSubscriptionStatus(

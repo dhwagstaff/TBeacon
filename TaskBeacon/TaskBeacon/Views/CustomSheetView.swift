@@ -128,12 +128,6 @@ struct CustomSheetView: View {
         dataUpdateManager.needsRefresh = true
         navigateToEditableList = true
     }
-
-    private func resetState() {
-        showAddShoppingItem = false
-        showAddTodoItem = false
-        isShowingAnySheet = false
-    }
 }
 
 //#Preview {

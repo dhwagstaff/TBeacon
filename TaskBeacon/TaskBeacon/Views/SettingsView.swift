@@ -141,13 +141,21 @@ struct SettingsView: View {
                 Section(header: Text("Subscription")) {
                     let hasPremiumSubscription = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ||
                                                 subscriptionsManager.purchasedProductIDs.contains("PMA_TBPA_25")
+                    let hasLifetime = subscriptionsManager.purchasedProductIDs.contains("com.pocketmeapps.TaskBeacon.Premium")
 
-                    if hasPremiumSubscription {
-                        let subscriptionType = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ? "Monthly" : "Annual"
-
-                        Text("✅ You have Echolist Premium (\(subscriptionType))!")
-                            .foregroundColor(.green)
-                            .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
+                    if hasPremiumSubscription || hasLifetime {
+                        if hasPremiumSubscription {
+                            let subscriptionType = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25") ? "Monthly" : "Annual"
+                            Text("✅ You have Echolist Premium (\(subscriptionType))!")
+                                .foregroundColor(.green)
+                                .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
+                        }
+                        
+                        if hasLifetime {
+                            Text("✅ You own Echolist Lifetime Access!")
+                                .foregroundColor(.green)
+                                .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : .clear, radius: 1)
+                        }
 
                         Button("Manage Subscription") {
                             openAppStoreSubscriptionManagement()
@@ -163,7 +171,13 @@ struct SettingsView: View {
                                             await subscriptionsManager.buyProduct(product)
                                         }
                                     }) {
-                                        Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
+                                        Text(
+                                            product.id == "com.pocketmeapps.TaskBeacon.Premium"
+                                            ? "Upgrade to \(product.displayName) for \(product.displayPrice) (one-time purchase)"
+                                            : "Upgrade to \(product.displayName) for \(product.displayPrice)"
+                                        )
+                                        
+//                                        Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .tint(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)

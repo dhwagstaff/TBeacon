@@ -93,7 +93,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         }
     }
     
+//#if DEBUG
+//func clearTrialKeychain() {
+//    KeychainHelper.shared.delete(service: FreeLimitChecker.KEYCHAIN_SERVICE, account: FreeLimitChecker.KEYCHAIN_FIRST_LAUNCH_KEY)
+//}
+//#endif
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+//#if DEBUG
+//clearTrialKeychain()
+//#endif
+        
         if !hasInitializedLocationManager {
             initializeLocationManager()
             hasInitializedLocationManager = true

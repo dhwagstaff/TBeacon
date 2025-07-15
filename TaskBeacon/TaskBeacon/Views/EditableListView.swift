@@ -160,14 +160,6 @@ struct EditableListView: View {
         !FreeLimitChecker.isInTrialPeriod()  // Add this check
     }
     
-//    private var shouldShowRewardedAdSection: Bool {
-//        !entitlementManager.isPremiumUser && appDelegate.adManager.canRequestAds
-//    }
-
-    private var shouldShowRewardedInterstitialAdView: Bool {
-        shouldShowRewardedAdSection && !taskBeaconRewardsIsShowing && !appDelegate.adManager.isCancelled
-    }
-        
     // MARK: - Computed Properties
     private var emptyStateView: some View {
         VStack(spacing: 20) {
@@ -794,19 +786,6 @@ struct EditableListView: View {
                     }
                 }
             }
-//            .sheet(isPresented: $showHelpView) {
-//                HelperView()
-//            }
-//            .sheet(isPresented: $isShowingRewardedAd, onDismiss: {
-//                appDelegate.adManager.lastAdTime = Date()
-//            }) {
-//                RewardedInterstitialContentView(isPresented: $isShowingRewardedAd, navigationTitle: "Echolist")
-//            }
-//            .sheet(isPresented: $isShowingInterstitialAd, onDismiss: {
-//                appDelegate.adManager.lastInterstitialAdTime = Date()
-//            }) {
-//                InterstitialContentView(isPresented: $isShowingInterstitialAd, navigationTitle: "Echolist")
-//            }
             .fullScreenCover(isPresented: Binding(
                 get: { isScanning && AVCaptureDevice.authorizationStatus(for: .video) == .authorized },
                 set: { isScanning = $0 }

@@ -50,17 +50,18 @@ class EntitlementManager: ObservableObject {
         Task { @MainActor in
             let hasMonthly = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPM_25")
             let hasAnnual = subscriptionsManager.purchasedProductIDs.contains("PMA_TBPA_25")
+            let hasLifetime = subscriptionsManager.purchasedProductIDs.contains("com.pocketmeapps.TaskBeacon.Premium")
             
             hasMonthlySubscription = hasMonthly
             hasAnnualSubscription = hasAnnual
-            isPremiumUser = hasMonthly || hasAnnual
+            isPremiumUser = hasMonthly || hasAnnual || hasLifetime
             
             // Persist the values
             Self.userDefaults.set(hasMonthlySubscription, forKey: "hasMonthlySubscription")
             Self.userDefaults.set(hasAnnualSubscription, forKey: "hasAnnualSubscription")
             Self.userDefaults.set(isPremiumUser, forKey: "isPremiumUser")
             
-            print("🔹 Subscription status updated - isPremiumUser: \(isPremiumUser), hasMonthly: \(hasMonthlySubscription), hasAnnual: \(hasAnnualSubscription)")
+            print("🔹 Subscription status updated - isPremiumUser: \(isPremiumUser), hasMonthly: \(hasMonthlySubscription), hasAnnual: \(hasAnnualSubscription), hasLifetime: \(hasLifetime)")
         }
     }
 
