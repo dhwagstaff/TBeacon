@@ -196,9 +196,6 @@ struct AddEditToDoItemView: View {
                             viewModel.objectWillChange.send()
                         }
                     })
-                    //                    RewardedInterstitialContentView(isPresented: $isShowingRewardedAd,
-                    //                                                    navigationTitle: "Echolist"
-                    //                    )
                 }
                 .onChange(of: isShowingRewardedAd) {
                     // Refresh the view when rewarded ad is dismissed

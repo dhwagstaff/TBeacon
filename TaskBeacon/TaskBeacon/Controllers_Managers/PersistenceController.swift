@@ -29,6 +29,8 @@ class PersistenceController {
         
         container.loadPersistentStores { _, error in
             if let error = error {
+                ErrorAlertManager.shared.showDataError("Unresolved error: \(error.localizedDescription)")
+
                 fatalError("Unresolved error \(error)")
             }
         }
@@ -40,6 +42,7 @@ class PersistenceController {
             do {
                 try context.save()
             } catch {
+                ErrorAlertManager.shared.showDataError("Failed to save data: \(error.localizedDescription)")
                 print("Error saving Core Data: \(error)")
             }
         }
@@ -55,6 +58,8 @@ class PersistenceController {
             let todoCount = try context.count(for: todoRequest)
             return (shoppingCount + todoCount) < 5 // Combined limit of 5 items
         } catch {
+            ErrorAlertManager.shared.showDataError("Error fetching item count: \(error.localizedDescription)")
+
             print("Error fetching item count: \(error.localizedDescription)")
             return false
         }

@@ -34,9 +34,6 @@ class EntitlementManager: ObservableObject {
         isPremiumUser = Self.userDefaults.bool(forKey: "isPremiumUser")
         hasMonthlySubscription = Self.userDefaults.bool(forKey: "hasMonthlySubscription")
         hasAnnualSubscription = Self.userDefaults.bool(forKey: "hasAnnualSubscription")
-        
-        print("🔹 EntitlementManager initialized - isPremiumUser: \(isPremiumUser), hasMonthly: \(hasMonthlySubscription), hasAnnual: \(hasAnnualSubscription)")
-        print("🔹 UserDefaults values - isPremiumUser: \(Self.userDefaults.bool(forKey: "isPremiumUser")), hasMonthly: \(Self.userDefaults.bool(forKey: "hasMonthlySubscription")), hasAnnual: \(Self.userDefaults.bool(forKey: "hasAnnualSubscription"))")
     }
     
     func checkSubscriptionStatus() {

@@ -43,10 +43,7 @@ class ToDoListViewModel: ListsViewModel {
                 self.updateGroupedToDoItems(updateExists: false)
             }
         } catch {
-            print("❌ Failed to save To-Do item: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Failed to save To-Do item: \(error.localizedDescription)")
         }
     }
 
@@ -55,10 +52,7 @@ class ToDoListViewModel: ListsViewModel {
         do {
             toDoItems = try CoreDataManager.shared().fetch(entityName: CoreDataEntities.toDoItem.stringValue, sortBy: [NSSortDescriptor(keyPath: \ToDoItemEntity.dueDate, ascending: true)])
         } catch {
-            print("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
         }
     }
     
@@ -201,9 +195,7 @@ class ToDoListViewModel: ListsViewModel {
                 DataUpdateManager.shared.objectWillChange.send()
             }
         } catch {
-            print("❌ Failed to save To-Do item: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Failed to save To-Do item: \(error.localizedDescription)")
         }
         
         businessName = Constants.emptyString
@@ -293,9 +285,7 @@ class ToDoListViewModel: ListsViewModel {
             fetchToDoItems() // <-- Always fetch after a change!
             updateGroupedToDoItems(updateExists: false) // If you use grouped data
         } catch {
-            print("❌ Error deleting item: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Error deleting item: \(error.localizedDescription)")
         }
     }
     

@@ -31,8 +31,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     @Published var searchQuery: String = ""
     @Published var selectedCategory: String? = nil
     @Published var selectedLocation: MKMapItem?
-    @Published var errorMessage: String = Constants.emptyString
-    @Published var showErrorAlert = false
 
     let maxDistanceMeters: Double = 64373.6 // 40336 // 25 miles, or use 64373.6 for 40 miles
 
@@ -129,8 +127,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                 let shouldMonitor = shouldMonitorItem(item, latitude: latitude, longitude: longitude)
                 
                 if shouldMonitor {
-                    print("\n\nitem ::: \(item)\n\n")
-                    print("this lat ::: \(latitude) ::: \(longitude)")
                     let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                     monitorRegionAtLocation(center: coordinate, identifier: uid, item: item)
                 }
@@ -157,26 +153,20 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     }
     
     func loadStores() async {
-        print("🔄 Loading stores... userLocation : \(String(describing: userLocation)) currentLocation : \(String(describing: currentLocation))")
-        
         await MainActor.run { self.isFetching = true }
                 
         // If we already have stores, don't fetch again
         if !self.stores.isEmpty {
-            print("✅ Already have \(stores.count) stores, skipping fetch")
             await MainActor.run { isFetching = false }
             return
         }
         
         // Use the userLocation passed to this view directly, not from locationManager
         if let location = userLocation {
-            print("📍 Using passed userLocation for store search")
             await self.searchNearbyStores()
         } else if let managerLocation = self.currentLocation {
-            print("📍 Using manager's current location for store search")
             await self.searchNearbyStores()
         } else {
-            print("⚠️ No location available for store search")
             await MainActor.run { self.isFetching = true }
         }
     }
@@ -184,20 +174,14 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     func searchNearbyStores(userQuery: String? = nil) async {
         await MainActor.run { self.isFetching = true }
         
-        // Get current user location directly from CLLocationManager
-       // see note same statement in func performDirect... let locationManager = CLLocationManager()
-        
         guard let currentLocation = self.locationManager.location?.coordinate else {
-            print("❌ No location available for search")
             await MainActor.run {
                 self.isFetching = false
-                self.errorMessage = "Location not available"
-                self.showErrorAlert = true
+                ErrorAlertManager.shared.showDataError("Location not available")
             }
             return
         }
                 
-        print("📍 Using current location for searchNearbyStores: \(currentLocation.latitude), \(currentLocation.longitude)")
         let searchCenter = currentLocation
 
         var allStores: [MKMapItem] = []
@@ -226,9 +210,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                             uniqueKeys.insert(key)
                         }
                     }
-                    print("✅ Found \(results.count) stores for major chain '\(userQuery)'")
+                    ErrorAlertManager.shared.showDataError("✅ Found \(results.count) stores for major chain '\(userQuery)'")
                 } catch {
-                    print("❌ Error searching for major chain '\(userQuery)': \(error)")
+                    ErrorAlertManager.shared.showDataError("❌ Error searching for major chain '\(userQuery)': \(error)")
                 }
             }
 
@@ -256,9 +240,8 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                             uniqueKeys.insert(key)
                         }
                     }
-                    print("✅ Found \(results.count) stores for '\(variation)'")
                 } catch {
-                    print("❌ Error searching for '\(variation)': \(error)")
+                    ErrorAlertManager.shared.showDataError("❌ Error searching for '\(variation)': \(error)")
                 }
             }
         } else {
@@ -280,9 +263,8 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                             uniqueKeys.insert(key)
                         }
                     }
-                    print("✅ Found \(results.count) stores for major chain '\(chain)'")
                 } catch {
-                    print("❌ Error searching for major chain '\(chain)': \(error)")
+                    ErrorAlertManager.shared.showDataError("❌ Error searching for major chain '\(chain)': \(error)")
                 }
             }
             // 4. Then search with generic terms
@@ -303,9 +285,8 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                             uniqueKeys.insert(key)
                         }
                     }
-                    print("✅ Found \(results.count) stores for '\(term)'")
                 } catch {
-                    print("❌ Error searching for '\(term)': \(error)")
+                    ErrorAlertManager.shared.showDataError("❌ Error searching for '\(term)': \(error)")
                 }
             }
         }
@@ -320,11 +301,10 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         
         // Use the current location for filtering
         guard let filterLocation = locationManager.location else {
-            print("❌ No location available for filtering stores")
             await MainActor.run {
                 self.isFetching = false
-                self.errorMessage = "Location not available for filtering stores"
-                self.showErrorAlert = true
+                
+                ErrorAlertManager.shared.showDataError("Location not available for filtering stores")
             }
             return
         }
@@ -338,7 +318,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         await MainActor.run {
             self.stores = filteredStores
             self.isFetching = false
-            print("✅ Total unique stores found: \(filteredStores.count)")
         }
     }
     
@@ -476,7 +455,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     // Helper function to update store list
     private func updateStoreList(with stores: [MKMapItem]) {
         if !stores.isEmpty {
-            print("✅ Found \(stores.count) unique stores after deduplication")
             self.stores = stores
             self.storeOptions = stores.compactMap { self.createStoreOption(from: $0) }
             self.noStoresFound = false
@@ -492,8 +470,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     
     // Function to perform a direct MapKit search
     func performDirectMapKitSearch() async {
-        print("🔍 Performing direct MapKit search in EditableListView")
-        
         // Get current user location from CLLocationManager
        // removed as potential fix for authorization allow always but may be working for maps and store lookup: let locationManager = CLLocationManager()
         let searchCenter: CLLocationCoordinate2D
@@ -604,8 +580,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         
         // Update filtered store options based on current search query and category
          storeOptions = filterStores(searchQuery: searchQuery, category: selectedCategory)
-        
-        print("✅ Updated store options. Total stores: \(storeOptions.count)")
     }
     
     func createStoreOption(from store: MKMapItem) -> StoreOption? {
@@ -820,28 +794,17 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     private func clearAllGeofences() {
         for region in locationManager.monitoredRegions {
             locationManager.stopMonitoring(for: region)
-          //  print("🛑 Stopped monitoring region: \(region.identifier)")
         }
-      //  print("✅ Cleared all existing geofences.")
-        
+
         regionIDToItemMap.removeAll()
         storeRegionIDToItemsMap.removeAll()
-        
-        print("🛑 Cleared all existing geofences and tracking maps.")
     }
     
     func monitorRegionAtLocation(center: CLLocationCoordinate2D, identifier: String, item: NSManagedObject) {
-        print("in monitorRegionAtLocation ::: center ::: \(center) ::: identifer ::: \(identifier)")
-        print("Currently monitored regions: \(locationManager.monitoredRegions.map { $0.identifier })")
-
         // Check if region is already being monitored
         let recentlyPresentedNotifications = NotificationDelegate.shared.recentlyPresentedNotifications
         
-        print("bef isRegionMonitored recentlyPresentedNotifications ::: \(recentlyPresentedNotifications)")
-        print("Is region monitored: \(locationManager.monitoredRegions.contains { $0.identifier == identifier })")
-        
         if isRegionMonitored(identifier) && !recentlyPresentedNotifications.isEmpty {
-            print("⚠️ Region \(identifier) is already being monitored, skipping")
             return
         }
 
@@ -851,20 +814,14 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             region.notifyOnExit = true
        
             locationManager.startMonitoring(for: region)
-            print("✅ Started monitoring region: \(identifier)")
-            print("Region details - Center: \(region.center), Radius: \(region.radius)")
             
             self.notifiedRegionIDs.insert(region.identifier)
             self.regionIDToItemMap[identifier] = item
-            print("item ::: \(item)")
-            print("regionIDToItemMap ::: \(self.regionIDToItemMap)")
-            print("notifiedRegionIDs ::: \(self.notifiedRegionIDs)")
         }
     }
     
     private func monitorStoreRegion(center: CLLocationCoordinate2D, identifier: String, items: [NSManagedObject]) {
         if isRegionMonitored(identifier) {
-            print("ℹ️ Store region already monitored: \(identifier)")
             return
         }
 
@@ -877,7 +834,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         }
         
         if !hasIncompleteItems {
-            print("⚠️ Store \(identifier) has no incomplete items, skipping monitoring")
             return
         }
 
@@ -887,7 +843,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
             region.notifyOnExit = false
             
             locationManager.startMonitoring(for: region)
-            print("✅ Started monitoring STORE region: \(identifier) with \(items.count) items")
             self.storeRegionIDToItemsMap[identifier] = items
         }
     }
@@ -897,9 +852,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         
         let hasIncompleteItems = storeHasIncompleteItems(storeName: storeName, storeAddress: storeAddress)
         let storeIdentifier = "\(storeName)_\(storeAddress)"
-        
-        print("🔄 Updating monitoring for store: \(storeName)")
-        print("📍 Store has incomplete items: \(hasIncompleteItems)")
         
         if hasIncompleteItems {
             // Check if we're already monitoring this store
@@ -1032,11 +984,7 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         // Create a fresh CLLocationManager for testing
         let testManager = CLLocationManager()
         testManager.delegate = self
-        
-        print("🧪 Test manager created: \(testManager)")
-        print("🧪 Test manager delegate set: \(testManager.delegate != nil)")
-        print("🧪 Test manager authorization status: \(testManager.authorizationStatus.rawValue)")
-        
+                
         if testManager.authorizationStatus == .notDetermined {
             print("🧪 Requesting permission with test manager...")
             testManager.requestAlwaysAuthorization()
@@ -1114,9 +1062,6 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
     }
 
     func consolidateDuplicateStores() {
-        print("🔄 Starting store consolidation...")
-        print("📊 Initial store count: \(stores.count)")
-        
         // Create a set to store unique addresses
         var uniqueAddresses = Set<String>()
         var consolidatedStores: [MKMapItem] = []
@@ -1307,89 +1252,8 @@ extension LocationManager: CLLocationManagerDelegate {
         }
     }
     
-//    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-//        print("🎯 DID ENTER REGION CALLED: \(region.identifier)")
-//        print("📍 Current monitored regions: \(locationManager.monitoredRegions.map { $0.identifier })")
-//        print("��️ regionIDToItemMap keys: \(regionIDToItemMap.keys)")
-//        print("🏪 storeRegionIDToItemsMap keys: \(storeRegionIDToItemsMap.keys)")
-//
-//        let regionIdentifier = region.identifier
-//        let content = UNMutableNotificationContent()
-//        var itemsForNotification: [NSManagedObject] = []
-//        
-//        // Case 1: The entered region is for a To-Do Item
-//        if let todoItem = regionIDToItemMap[regionIdentifier] {
-//            print("✅ Found ToDo item for region: \(regionIdentifier)")
-//
-//            itemsForNotification.append(todoItem)
-//            content.title = "To-Do Reminder"
-//            if let locationName = todoItem.value(forKey: "addressOrLocationName") as? String {
-//                 content.subtitle = "You're near \(locationName)"
-//            }
-//        }
-//        // Case 2: The entered region is for a Store
-//        else if let shoppingItems = storeRegionIDToItemsMap[regionIdentifier] {
-//            print("✅ Found Shopping items for region: \(regionIdentifier)")
-//
-//            itemsForNotification = shoppingItems
-//            content.title = "Shopping Reminder"
-//            if let storeName = shoppingItems.first?.value(forKey: "storeName") as? String {
-//                content.subtitle = "You're near \(storeName)"
-//            }
-//        }
-//        // Case 3: Unrecognized region
-//        else {
-//            print("⚠️ Could not find matching data for region: \(regionIdentifier)")
-//            print("🔍 Available region IDs in regionIDToItemMap: \(regionIDToItemMap.keys)")
-//            print("🔍 Available region IDs in storeRegionIDToItemsMap: \(storeRegionIDToItemsMap.keys)")
-//
-//            print("⚠️ Could not find matching data for region: \(regionIdentifier)")
-//            return
-//        }
-//
-//        guard !itemsForNotification.isEmpty else {         print("⚠️ No items found for notification")
-// return }
-//
-//        // Build the notification body from all relevant items
-//        let itemNames = itemsForNotification.compactMap { item -> String? in
-//            if item.entity.name == "ToDoItemEntity" {
-//                return item.value(forKey: "task") as? String
-//            } else if item.entity.name == "ShoppingItemEntity" {
-//                return item.value(forKey: "name") as? String
-//            }
-//            return nil
-//        }
-//        
-//        if itemNames.isEmpty {
-//            content.body = "You have reminders here!"
-//        } else if itemNames.count == 1 {
-//            content.body = "Don't forget: \(itemNames.first!)"
-//        } else {
-//            // Create a bulleted list for the notification body
-//            let bodyString = itemNames.map { "• \($0)" }.joined(separator: "\n")
-//            content.body = "Don't forget:\n\(bodyString)"
-//        }
-//
-//        content.sound = .default
-//        
-//        // Use a unique identifier to ensure the notification is always delivered
-//        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-//        
-//        print("📱 Scheduling notification for region: \(regionIdentifier)")
-//        print("📝 Notification content: \(content.title) - \(content.body)")
-//        
-//        UNUserNotificationCenter.current().add(request) { error in
-//            if let error = error {
-//                print("❌ Failed to schedule notification: \(error.localizedDescription)")
-//            } else {
-//                print("✅ Notification scheduled for region \(regionIdentifier)")
-//            }
-//        }
-//    }
-    
     func checkAndUpdateRegionMonitoring(for locationIdentifier: String) {
         // Get all items for this location, using uid
-        print(">>>> regionIDToItemMap ::: \(regionIDToItemMap) ::: locationIdentifer : \(locationIdentifier)")
         let items = regionIDToItemMap.filter { item in
             return item.key == locationIdentifier
         }
@@ -1398,8 +1262,6 @@ extension LocationManager: CLLocationManagerDelegate {
         let hasActiveItems = items.contains { item in
             return !(item.value.value(forKey: "isCompleted") as? Bool ?? true)
         }
-        
-        print("\n\n***** items ::: \(items)\n\n*****")
         
         // Stop monitoring and clean up all regions for this item
         for (regionID, item) in items {
@@ -1417,8 +1279,6 @@ extension LocationManager: CLLocationManagerDelegate {
     }
     
     func updateAllGeofenceRadii() {
-        print("dhw updateAllGeofenceRadii")
-
         // Get the new radius from UserDefaults
         let newRadius = UserDefaults.standard.double(forKey: "geofenceRadius")
         
@@ -1433,19 +1293,12 @@ extension LocationManager: CLLocationManagerDelegate {
                let longitude = item.value(forKey: "longitude") as? Double {
                 let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                 monitorRegionAtLocation(center: coordinate, identifier: identifier, item: item)
-                
-              //  regionIDToItemMap[identifier] = item
             }
         }
     }
     
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        print("dhw did exit region")
-
         guard let region = region as? CLCircularRegion else { return }
-        
-        print("⬅️ Exited region: \(region.identifier)")
-     //   notifiedRegionIDs.remove(region.identifier) // Allow future entry notifications
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

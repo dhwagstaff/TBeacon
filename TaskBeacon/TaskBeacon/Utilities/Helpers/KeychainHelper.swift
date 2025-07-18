@@ -30,7 +30,7 @@ class KeychainHelper {
         }
         
         if status != errSecSuccess {
-            print("Error saving to Keychain: \(status)")
+            ErrorAlertManager.shared.showDataError("Error saving to keychain: \(status)")
         }
     }
     
@@ -58,6 +58,8 @@ class KeychainHelper {
         let status = SecItemDelete(query)
         
         if status != errSecSuccess && status != errSecItemNotFound {
+            ErrorAlertManager.shared.showDataError("Error deleting from Keychain: \(status)")
+
             print("Error deleting from Keychain: \(status)")
         } else {
             print("Successfully deleted from Keychain")

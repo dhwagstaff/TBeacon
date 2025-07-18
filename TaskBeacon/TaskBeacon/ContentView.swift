@@ -108,11 +108,6 @@ struct ContentView: View {
         self._isAddingToDoItem = isAddingToDoItem
         self._isAddingShoppingItem = isAddingShoppingItem
         self._isUpcomingToDoItems = isUpcomingToDoItems
-
-        // Initialize other properties
-//        let context = PersistenceController.shared.container.viewContext
-//        let todoRequest = NSFetchRequest<ToDoItemEntity>(entityName: CoreDataEntities.toDoItem.stringValue)
-//        let shoppingRequest = NSFetchRequest<ShoppingItemEntity>(entityName: CoreDataEntities.shoppingItem.stringValue)
     }
     
     var body: some View {
@@ -187,6 +182,7 @@ struct ContentView: View {
         .onChange(of: entitlementManager.isPremiumUser) {
             checkForPremiumCelebration()
         }
+        .overlay(ErrorAlertView())
     }
     
     private func checkForPremiumCelebration() {
@@ -224,6 +220,7 @@ struct ContentView: View {
         do {
             let _ = try viewContext.fetch(request)
         } catch {
+            ErrorAlertManager.shared.showDataError("Failed to refresh data: \(error.localizedDescription)")
             print("Failed to refresh data: \(error.localizedDescription)")
         }
         

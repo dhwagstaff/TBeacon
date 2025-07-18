@@ -46,9 +46,6 @@ struct AdDialogContentView: View {
                 
                 Spacer()
             }
-//            dialogBody
-//                .background(Color.white)
-//                .padding()
         }
     }
 

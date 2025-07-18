@@ -389,17 +389,10 @@ struct UnifiedStoreSelectionView: View {
             viewModel.isPreferredStore(store)
         }
         
-//        private var isPreferredStore: Bool {
-//            return !preferredStoreName.isEmpty &&
-//                   store.name == preferredStoreName &&
-//                   store.address == preferredStoreAddress
-//        }
-        
         var body: some View {
             HStack {
                 Button(action: {
                     viewModel.togglePreferredStore(isPreferredStore: isPreferredStore, store: store)
-                   // togglePreferredStore()
                 }) {
                     Image(systemName: isPreferredStore ? "star.fill" : "star")
                         .foregroundColor(isPreferredStore ? .yellow : .gray)
@@ -441,24 +434,6 @@ struct UnifiedStoreSelectionView: View {
                 onSelect()
             }
         }
-        
-//        private func togglePreferredStore() {
-//            if isPreferredStore {
-//                // Clear preferred store
-//                preferredStoreName = ""
-//                preferredStoreAddress = ""
-//                preferredStoreLatitude = 0.0
-//                preferredStoreLongitude = 0.0
-//                print("🗑️ Cleared preferred store")
-//            } else {
-//                // Set this store as preferred store
-//                preferredStoreName = store.name
-//                preferredStoreAddress = store.address
-//                preferredStoreLatitude = store.mapItem.placemark.coordinate.latitude
-//                preferredStoreLongitude = store.mapItem.placemark.coordinate.longitude
-//                print("⭐ Set preferred store: \(store.name)")
-//            }
-//        }
         
         private func formatDistance(_ distance: CLLocationDistance) -> String {
             let formatter = MKDistanceFormatter()

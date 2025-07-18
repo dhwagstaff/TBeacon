@@ -22,41 +22,38 @@ class InterstitialViewModel: NSObject, ObservableObject, FullScreenContentDelega
         self.onAdDismissed = onDismissed
         self.onAdReady = onAdReady
         self.onAdFailed = onAdFailed
-
+        
         let adUnitID = "ca-app-pub-7371576916843305/8036047270" // "ca-app-pub-3940256099942544/4411468910" // Test Ad Unit ID
         
-                    // live ad unit id
-//            interstitialAd = try await InterstitialAd.load(
-//                        with: "ca-app-pub-7371576916843305/8036047270",
+        // live ad unit id
+        //            interstitialAd = try await InterstitialAd.load(
+        //                        with: "ca-app-pub-7371576916843305/8036047270",
         
         print("�� Attempting to load interstitial ad with unit ID: \(adUnitID)")
         print("🔍 MobileAds.shared.isSDKInitialized: \(MobileAds.shared)")
-
-        do {
-            try InterstitialAd.load(with: adUnitID, request: Request()) { [weak self] ad, error in
-                guard let self = self else { return }
+        
+        InterstitialAd.load(with: adUnitID, request: Request()) { [weak self] ad, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                ErrorAlertManager.shared.showDataError("Failed to load interstitial ad: \(error.localizedDescription)")
                 
-                if let error = error {
-                    print("Failed to load interstitial ad: \(error.localizedDescription)")
-                    print("🔍 Error details: \(error)")
-                    self.onAdFailed?() // Call failure callback
-                    self.onAdDismissed?() // Dismiss the sheet if loading fails
-                    return
-                }
-                
-                print("✅ Interstitial ad loaded successfully")
-
-                self.interstitialAd = ad
-                self.interstitialAd?.fullScreenContentDelegate = self
-                
-                self.onAdReady?()
-                
-                
-                self.presentAd()
+                print("Failed to load interstitial ad: \(error.localizedDescription)")
+                print("🔍 Error details: \(error)")
+                self.onAdFailed?() // Call failure callback
+                self.onAdDismissed?() // Dismiss the sheet if loading fails
+                return
             }
-        } catch {
-            print("Failed to load interstitial ad with error: \(error.localizedDescription)")
-            self.onAdFailed?() // Call failure callback
+            
+            print("✅ Interstitial ad loaded successfully")
+            
+            self.interstitialAd = ad
+            self.interstitialAd?.fullScreenContentDelegate = self
+            
+            self.onAdReady?()
+            
+            
+            self.presentAd()
         }
     }
     
@@ -99,6 +96,8 @@ class InterstitialViewModel: NSObject, ObservableObject, FullScreenContentDelega
     }
     
     func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+        ErrorAlertManager.shared.showDataError("Interstitial ad failed to present: \(error.localizedDescription)")
+
         print("Interstitial ad failed to present: \(error.localizedDescription)")
         self.onAdFailed?() // Dismiss the sheet on failure
         self.interstitialAd = nil

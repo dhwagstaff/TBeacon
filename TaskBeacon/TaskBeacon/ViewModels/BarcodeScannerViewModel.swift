@@ -19,7 +19,6 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
     @Published var isLoading: Bool = false
     @Published var availableStores: [StoreOption] = []
     @Published var showStoreSelectionSheet: Bool = false
-    @Published var showErrorMessage: String?
     
     var captureSession: AVCaptureSession?
     
@@ -49,6 +48,8 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
         let captureSession = AVCaptureSession()
 
         guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else {
+            ErrorAlertManager.shared.showDataError("❌ No video capture device found.")
+
             print("❌ No video capture device found.")
             return nil
         }
@@ -58,14 +59,13 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
             if captureSession.canAddInput(videoInput) {
                 captureSession.addInput(videoInput)
             } else {
+                ErrorAlertManager.shared.showDataError("❌ Cannot add video input to session.")
+
                 print("❌ Cannot add video input to session.")
                 return nil
             }
         } catch {
-            print("❌ Error creating video input: \(error.localizedDescription)")
-            
-            self.errorMessage = error.localizedDescription
-            self.showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Error creating video input: \(error.localizedDescription)")
             
             return nil
         }
@@ -78,6 +78,8 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
         let openFoodFactsURL = "https://world.openfoodfacts.org/api/v2/product/\(barcode).json"
 
         guard let url = URL(string: openFoodFactsURL) else {
+            ErrorAlertManager.shared.showNetworkError("❌ Invalid URL for OpenFoodFacts")
+
             print("❌ Invalid URL for OpenFoodFacts")
             fetchFromBrocade(barcode: barcode, completion: completion) // ✅ Fallback
             return
@@ -85,11 +87,9 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
 
         URLSession.shared.dataTask(with: url) { data, _, error in
             guard let data = data, error == nil else {
-                print("⚠️ OpenFoodFacts request failed. Attempting Brocade...")
                 
                 if let error = error {
-                    self.errorMessage = error.localizedDescription
-                    self.showErrorAlert = true
+                    ErrorAlertManager.shared.showNetworkError("⚠️ OpenFoodFacts request failed. Attempting Brocade... \(error.localizedDescription)")
                 }
                 
                 DispatchQueue.main.async { self.fetchFromBrocade(barcode: barcode, completion: completion) }
@@ -133,13 +133,11 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                     newItem.storeAddress = preferredStoreAddress
                     newItem.latitude = preferredStoreLatitude
                     newItem.longitude = preferredStoreLongitude
-                    print("✅ Auto-assigned preferred store: \(preferredStoreName)")
                 } else {
                     newItem.storeName = Constants.emptyString
                     newItem.storeAddress = Constants.emptyString
                     newItem.latitude = 0.0
                     newItem.longitude = 0.0
-                    print("⚠️ No preferred store set, item will appear in unassigned section")
                 }
                 
                 // ✅ Handle Expiration Date
@@ -164,7 +162,6 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                             let (_, daysToExpire) = matchingItem
                             newItem.expirationDate = Calendar.current.date(byAdding: .day, value: daysToExpire, to: Date())
                             foundMatch = true
-                            print("📅 Found matching item '\(matchingItem.0)' in category '\(category)', setting expiration to \(daysToExpire) days")
                             break
                         }
                     }
@@ -173,15 +170,12 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                     if !foundMatch {
                         if let defaultDays = Constants.getDefaultExpirationDays(for: category) {
                             newItem.expirationDate = Calendar.current.date(byAdding: .day, value: defaultDays, to: Date())
-                            print("📅 No specific match found, using default expiration of \(defaultDays) days for category '\(category)'")
                         } else {
                             newItem.expirationDate = nil
-                            print("⚠️ No expiration estimate found for category '\(category)'")
                         }
                     }
                 } else {
                     newItem.expirationDate = nil
-                    print("⚠️ No expiration estimates found for category '\(category)'")
                 }
                 
                     // ✅ Fetch and Assign Product Image
@@ -199,10 +193,6 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
 
                 let shoppingListViewModel = ShoppingListViewModel(context: context, isEditingExistingItem: false)
                 
-//                Task {
-//                    await shoppingListViewModel.saveShoppingItemToCoreData(item: newItem)
-//                }
-
                     // ✅ **Trigger Immediate UI Refresh**
                     DispatchQueue.main.async {
                         shoppingListViewModel.fetchShoppingItems()
@@ -215,10 +205,7 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                     }
                // }
             } catch {
-                print("❌ Error decoding JSON: \(error.localizedDescription). Fetching from Brocade...")
-                
-                self.errorMessage = error.localizedDescription
-                self.showErrorAlert = true
+                ErrorAlertManager.shared.showNetworkError("❌ Error decoding JSON: \(error.localizedDescription). Fetching from Brocade...")
                 
                 DispatchQueue.main.async { self.fetchFromBrocade(barcode: barcode, completion: completion) }
             }
@@ -232,10 +219,7 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
     
     private func fetchProductImage(from url: String?, completion: @escaping (Data?) -> Void) {
         guard let urlString = url, let imageUrl = URL(string: urlString) else {
-            print("❌ Invalid or missing image URL. Using placeholder.")
-            
-            self.errorMessage = "❌ Invalid or missing image URL. Using placeholder."
-            self.showErrorAlert = true
+            ErrorAlertManager.shared.showNetworkError("❌ Invalid or missing image URL. Using placeholder.")
             
             completion(nil) // ✅ Return nil, UI will handle default image
             return
@@ -245,11 +229,8 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
             if let data = data, error == nil {
                 completion(data) // ✅ Successfully downloaded image
             } else {
-                print("⚠️ Failed to download image: \(error?.localizedDescription ?? "Unknown error")")
-                
                 if let error = error {
-                    self.errorMessage = error.localizedDescription
-                    self.showErrorAlert = true
+                    ErrorAlertManager.shared.showNetworkError("⚠️ Failed to download image: \(error.localizedDescription)")
                 }
 
                 completion(nil) // ✅ Return nil, UI will handle default image
@@ -273,10 +254,7 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                 let sortedStores = response.stores.sorted { $0.price < $1.price }
                 completion(Array(sortedStores.prefix(3))) // ✅ Only return the top 3 cheapest stores
             } catch {
-                print("❌ Error decoding store price data: \(error)")
-                
-                self.errorMessage = error.localizedDescription
-                self.showErrorAlert = true
+                ErrorAlertManager.shared.showNetworkError("❌ Error decoding store price data: \(error)")
 
                 completion([])
             }
@@ -285,11 +263,9 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
     
     func fetchFromBrocade(barcode: String, completion: @escaping (ShoppingItemEntity?) -> Void) {
         guard let brocadeURL = URL(string: "https://www.brocade.io/api/items/\(barcode)") else {
-            print("❌ Invalid Brocade API URL")
+            // ✅ Use unified error handling
+            ErrorAlertManager.shared.showNetworkError("Invalid Brocade API URL")
             
-            self.errorMessage = "❌ Invalid Brocade API URL"
-            self.showErrorAlert = true
-
             DispatchQueue.main.async {
                 completion(nil)
             }
@@ -298,11 +274,9 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
 
         URLSession.shared.dataTask(with: brocadeURL) { data, _, error in
             if let error = error {
-                print("❌ Error fetching data from Brocade: \(error.localizedDescription)")
+                // ✅ Use unified error handling
+                ErrorAlertManager.shared.showNetworkError("Failed to fetch data from Brocade: \(error.localizedDescription)")
                 
-                self.errorMessage = error.localizedDescription
-                self.showErrorAlert = true
-
                 DispatchQueue.main.async {
                     completion(nil)
                 }
@@ -310,11 +284,9 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
             }
 
             guard let data = data else {
-                print("❌ No data received from Brocade")
+                // ✅ Use unified error handling
+                ErrorAlertManager.shared.showNetworkError("No data received from Brocade")
                 
-                self.errorMessage = "❌ No data received from Brocade"
-                self.showErrorAlert = true
-
                 DispatchQueue.main.async {
                     completion(nil)
                 }
@@ -342,41 +314,26 @@ class BarcodeScannerViewModel: ListsViewModel, CLLocationManagerDelegate {
                 // ✅ Assign placeholder image since Brocade has NO product images
                 newItem.productImage = UIImage(systemName: "storefront.circle.fill")?.pngData()
                 
-                do {
-                    let viewModel = ShoppingListViewModel(context: context, isEditingExistingItem: false)
-                    
-//                    Task {
-//                        await viewModel.saveShoppingItemToCoreData(item: newItem)
-//                    }
-                    
-                    // ✅ **Trigger Immediate UI Refresh**
-                    viewModel.fetchShoppingItems()
-                    viewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
-                    
-                    // ✅ Notify UI about the update
-                    NotificationCenter.default.post(name: ShoppingNotification.shoppingListUpdated.name, object: nil)
-                    
-                    completion(newItem)
-                } catch {
-                    print("❌ Error saving shopping item: \(error.localizedDescription)")
-                    
-                    self.errorMessage = error.localizedDescription
-                    self.showErrorAlert = true
-
-                    completion(nil)
-                    return
-                }
-                //  }
-            } catch {
-                print("❌ JSON Decoding Error from Brocade: \(error.localizedDescription)")
+                // ✅ Remove the unnecessary do-catch block since these operations don't throw
+                let viewModel = ShoppingListViewModel(context: context, isEditingExistingItem: false)
                 
-                self.errorMessage = error.localizedDescription
-                self.showErrorAlert = true
-
+                // ✅ **Trigger Immediate UI Refresh**
+                viewModel.fetchShoppingItems()
+                viewModel.updateGroupedItemsByStoreAndCategory(updateExists: true)
+                
+                // ✅ Notify UI about the update
+                NotificationCenter.default.post(name: ShoppingNotification.shoppingListUpdated.name, object: nil)
+                
+                completion(newItem)
+                
+            } catch {
+                // ✅ Use unified error handling
+                ErrorAlertManager.shared.showNetworkError("Failed to decode product data: \(error.localizedDescription)")
+                
                 DispatchQueue.main.async {
                     completion(nil)
                 }
             }
         }.resume()
-    }
+    }    
 }

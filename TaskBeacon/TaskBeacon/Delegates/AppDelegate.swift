@@ -89,21 +89,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
             print("✅ Fetched \(items.count) items for location monitoring.")
             LocationManager.shared.initializeWithItems(items, context: context)
         } catch {
+            ErrorAlertManager.shared.showDataError("❌ Error fetching items: \(error)")
+
             print("❌ Error fetching items: \(error)")
         }
     }
     
-//#if DEBUG
-//func clearTrialKeychain() {
-//    KeychainHelper.shared.delete(service: FreeLimitChecker.KEYCHAIN_SERVICE, account: FreeLimitChecker.KEYCHAIN_FIRST_LAUNCH_KEY)
-//}
-//#endif
-    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        
-//#if DEBUG
-//clearTrialKeychain()
-//#endif
         
         if !hasInitializedLocationManager {
             initializeLocationManager()
@@ -111,16 +103,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         }
 
         clearNotifications(application)
-        
-        print("🚀 Initializing Google Mobile Ads SDK...")
-        
-     //   MobileAds.shared.requestConfiguration.testDeviceIdentifiers = ["d848514766cb1b5f090f430b07efcc7d"]
-        
-        // Delay consent gathering to ensure window is ready
-        // Start the consent flow
+
         Task {
             GoogleMobileAdsConsentManager.shared.gatherConsent { error in
                 if let error = error {
+                    ErrorAlertManager.shared.showDataError("❌ Consent gathering failed: \(error.localizedDescription)")
+
                     print("❌ Consent gathering failed: \(error.localizedDescription)")
                 } else {
                     print("✅ Consent gathered successfully")
@@ -136,69 +124,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
         return true
     }
     
-    
-//    private func gatherConsentAndInitializeSDK() {
-//        print("🔄 Gathering consent...")
-//        isConsentGathered = false
-//        
-//        // Ensure we have a window and root view controller before proceeding
-//        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-//              let window = windowScene.windows.first,
-//              let rootViewController = window.rootViewController else {
-//            print("❌ No window or root view controller available for consent gathering")
-//            return
-//        }
-//        
-//        GoogleMobileAdsConsentManager.shared.gatherConsent { [weak self] consentError in
-//            guard let self = self else { return }
-//            
-//            if let consentError {
-//                print("❌ Consent gathering failed: \(consentError.localizedDescription)")
-//                return
-//            }
-//            
-//            // Update consent status
-//            Task { @MainActor in
-//                await self.adManager.updateConsentStatus()
-//                self.isPrivacyOptionsRequired = self.adManager.isPrivacyOptionsRequired
-//                self.isConsentGathered = self.adManager.canRequestAds
-//            }
-//            
-////            DispatchQueue.main.async {
-////                self.isPrivacyOptionsRequired = GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
-////                self.adManager.canRequestAds = GoogleMobileAdsConsentManager.shared.canRequestAds
-////                
-////                print("📊 Consent Status - canRequestAds: \(self.adManager.canRequestAds), isPrivacyOptionsRequired: \(self.isPrivacyOptionsRequired)")
-////                
-////                // Only initialize SDK after consent is gathered
-////                if self.adManager.canRequestAds {
-////                    print("✅ Consent granted, initializing SDK...")
-////                    GoogleMobileAdsConsentManager.shared.startGoogleMobileAdsSDK()
-////                    
-////                    // SDK is now initialized, proceed with ad loading
-////                    self.isConsentGathered = true
-////                    self.loadInitialAd()
-////                } else {
-////                    print("⚠️ Cannot request ads due to consent status")
-////                }
-////            }
-//        }
-//    }
-    
     func applicationDidBecomeActive(_ application: UIApplication) {
         if let lastRefresh = UserDefaults.standard.object(forKey: "lastGeofenceRefresh") as? Date,
            Date().timeIntervalSince(lastRefresh) < 300 { // 5 minutes
             return
         }
-        
-        print("📲 App became active. Refreshing geofences.")
-        
-        // Revalidate consent when app becomes active
-//        if !isConsentGathered {
-//            print("🔄 Revalidating consent status...")
-//            gatherConsentAndInitializeSDK()
-//        }
-        
+                
         let context = PersistenceController.shared.container.viewContext
         var items: [NSManagedObject] = []
         
@@ -218,6 +149,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
                 LocationManager.shared.loadAndMonitorAllGeofences(from: context)
             }
         } catch {
+            ErrorAlertManager.shared.showDataError("❌ Error fetching items: \(error)")
+
             print("❌ Error fetching items: \(error)")
         }
         
@@ -230,9 +163,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
     func checkTrialExpiration() {
         let isInTrial = FreeLimitChecker.isInTrialPeriod()
         let wasInTrial = UserDefaults.standard.bool(forKey: "wasInTrial")
-        
-        print("🔍 App-level trial check - isInTrial: \(isInTrial), wasInTrial: \(wasInTrial)")
-        
+                
         if wasInTrial && !isInTrial {
             // Trial just expired - post notification
             print(" Trial just expired - posting notification")
@@ -254,8 +185,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
                 self.adManager.isPrivacyOptionsRequired = self.isPrivacyOptionsRequired
 
                 self.adManager.isAdReady = true
-                
-                print("app delegate 📊 AdManager consent status updated - canRequestAds: \(self.adManager.canRequestAds)")
             }
         }
     }
@@ -267,7 +196,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
     
     func handleAdChange(_ newAdReady: Bool) {
         if newAdReady && adManager.canShowAd() {
-            print("🚀 Ad is ready and cooldown passed, setting showAd = true")
             DispatchQueue.main.async {
                 self.showAd = true
             }

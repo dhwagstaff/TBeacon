@@ -1163,6 +1163,8 @@ struct EditableListView: View {
                 self.refreshTrigger = UUID() // Force view refresh
             }
         } catch {
+            ErrorAlertManager.shared.showDataError("Error saving context: \(error)")
+
             print("Error saving context: \(error)")
         }
     }

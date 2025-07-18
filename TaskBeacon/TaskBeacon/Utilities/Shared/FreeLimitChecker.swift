@@ -60,17 +60,10 @@ struct FreeLimitChecker {
         if let firstLaunch = getFirstLaunchDate() {
             let currentDate = Date()
             let elapsed = currentDate.timeIntervalSince(firstLaunch)
-//            print("🔹 Trial check - First launch: \(firstLaunch)")
-//            print("🔹 Trial check - Current date: \(currentDate)")
-//            print("🔹 Trial check - Elapsed time: \(elapsed) seconds")
-//            print("🔹 Trial check - Trial duration: \(TRIAL_DURATION) seconds")
-//            print("🔹 Trial check - Is in trial: \(elapsed < TRIAL_DURATION)")
             return elapsed < TRIAL_DURATION
         } else {
             // No first launch date saved, this is the first launch
             let currentDate = Date()
-            print("🔹 First launch detected - starting trial")
-            print("🔹 First launch date being saved: \(currentDate)")
             saveFirstLaunchDate()
             return true
         }
@@ -95,12 +88,6 @@ struct FreeLimitChecker {
         return baseLimit + rewardedCount
     }
     
-//    static func getCurrentLimit() -> Int {
-//        let rewardedCount = UserDefaults.standard.integer(forKey: REWARDED_ITEMS_KEY)
-//        let baseLimit = isInTrialPeriod() ? TRIAL_LIMIT : BASE_FREE_LIMIT
-//        return baseLimit + rewardedCount
-//    }
-    
     // Get remaining trial days (nil if trial is over)
     static func getRemainingTrialDays() -> Int? {
         guard let firstLaunch = getFirstLaunchDate() else {
@@ -116,21 +103,6 @@ struct FreeLimitChecker {
         
         return Int(ceil(remaining / (24 * 60 * 60)))
     }
-    
-//    static func getRemainingTrialDays() -> Int? {
-//        guard let trialStart = UserDefaults.standard.object(forKey: TRIAL_DURATION_KEY) as? Date else {
-//            return nil
-//        }
-//        
-//        let elapsed = Date().timeIntervalSince(trialStart)
-//        let remaining = (14 * 24 * 60 * 60) - elapsed // 14 days in seconds
-//        
-//        if remaining <= 0 {
-//            return nil
-//        }
-//        
-//        return Int(ceil(remaining / (24 * 60 * 60)))
-//    }
     
     static func isOverFreeLimit(isPremiumUser: Bool, isEditingExistingItem: Bool) -> Bool {
         guard !isPremiumUser else {
@@ -160,6 +132,8 @@ struct FreeLimitChecker {
 
             return totalItems >= currentLimit
         } catch {
+            ErrorAlertManager.shared.showDataError("Error checking item limit: \(error.localizedDescription)")
+
             print("Error checking item limit: \(error.localizedDescription)")
             return true // Prevent creation if we can't verify the count
         }

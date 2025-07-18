@@ -96,6 +96,8 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         do {
             videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
         } catch {
+            ErrorAlertManager.shared.showCameraError("Failed to initialize camera: \(error.localizedDescription)")
+            
             print("❌ Error creating video input: \(error)")
             return
         }
@@ -103,6 +105,8 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         if captureSession.canAddInput(videoInput) {
             captureSession.addInput(videoInput)
         } else {
+            ErrorAlertManager.shared.showDataError("❌ Could not add video input")
+
             print("❌ Could not add video input")
             return
         }
@@ -113,6 +117,8 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
             metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
             metadataOutput.metadataObjectTypes = [.ean13, .ean8, .upce]
         } else {
+            ErrorAlertManager.shared.showDataError("❌ Could not add metadata output")
+
             print("❌ Could not add metadata output")
             return
         }
@@ -164,6 +170,8 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
             device.torchMode = (device.torchMode == .on) ? .off : .on
             device.unlockForConfiguration()
         } catch {
+            ErrorAlertManager.shared.showDataError("❌ Error toggling flash: \(error.localizedDescription)")
+
             print("❌ Error toggling flash: \(error)")
         }
     }
@@ -195,6 +203,8 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
                     self.showConfirmationAlert()
                 }
             } else {
+                ErrorAlertManager.shared.showDataError("⚠️ Barcode detected but outside focus area")
+
                 print("⚠️ Barcode detected but outside focus area")
             }
         }
@@ -244,6 +254,8 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
             animateFocusSquare(to: point)
 
         } catch {
+            ErrorAlertManager.shared.showDataError("❌ Error focusing: \(error.localizedDescription)")
+
             print("❌ Error focusing: \(error)")
         }
     }

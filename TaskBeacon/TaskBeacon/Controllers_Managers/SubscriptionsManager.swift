@@ -18,8 +18,6 @@ class SubscriptionsManager: NSObject, ObservableObject {
     @Published var products: [StoreKit.Product] = []
     @Published var taskBeaconProducts: [Echolist.Product] = []
     @Published var hasLoadedProducts = false // Prevent multiple loads
-    @Published var errorMessage: String = Constants.emptyString
-    @Published var showErrorAlert = false
 
     @AppStorage("isPremiumUser") var isPremiumUser: Bool = false
     @AppStorage("hasRemovedAds") var hasRemovedAds: Bool = false
@@ -77,21 +75,14 @@ extension SubscriptionsManager {
                                        price: prods.price.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD")),
                                        expirationDate: nil)
                 }
-
-                print("✅ StoreKit Products: \(self.products.count)")
-                print("✅ Echolist Products: \(self.taskBeaconProducts.count)")
             }
 
         } catch {
-            print("❌ Failed to fetch products! Error: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showSubscriptionError(error.localizedDescription)
         }
     }
     
     func buyProduct(_ storeKitProduct: StoreKit.Product) async {
-        print("in buyProduct")
         do {
             let result = try await storeKitProduct.purchase() // ✅ Ensures we're using StoreKit.Product
 
@@ -118,8 +109,6 @@ extension SubscriptionsManager {
                         appDelegate.adManager.refreshEntitlementStatus()
                         print("🔹 AdManager updated after purchase")
                     }
-                    
-                    print("✅ Purchase completed - status updated immediately")
                 }
                 
                 // ✅ Handle ad removal purchase
@@ -128,10 +117,7 @@ extension SubscriptionsManager {
                 }
 
             case let .success(.unverified(_, error)):
-                print("❌ Unverified purchase. Might be jailbroken. Error: \(error)")
-                
-                errorMessage = error.localizedDescription
-                showErrorAlert = true
+                ErrorAlertManager.shared.showSubscriptionError(error.localizedDescription)
 
             case .pending:
                 print("⏳ Purchase pending approval...")
@@ -143,48 +129,41 @@ extension SubscriptionsManager {
                 print("⚠️ Unknown purchase result!")
             }
         } catch {
-            print("❌ Purchase failed! Error: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showSubscriptionError(error.localizedDescription)
         }
     }
     
     func updatePurchasedProducts() async {
         print("🔄 Checking purchased products...")
-
+        
         // Clear existing products first
         self.purchasedProductIDs.removeAll()
-
-        do {
-            for await result in Transaction.currentEntitlements {
-                guard case .verified(let transaction) = result else { 
-                    print("⚠️ Unverified transaction found")
-                    continue 
-                }
-
-                if transaction.revocationDate == nil {
-                    self.purchasedProductIDs.insert(transaction.productID)
-                    print("✅ Found active transaction for product: \(transaction.productID)")
-                    
-                    // ✅ Check if the user is premium
-                    if premiumIDs.contains(transaction.productID) {
-                        isPremiumUser = true
-                        print("✅ Premium subscription found: \(transaction.productID)")
-                    }
-                    
-                    // ✅ Check if ads should be removed
-                    if transaction.productID == "REMOVE_ADS" {
-                        hasRemovedAds = true
-                        print("✅ Ad removal purchase found")
-                    }
-                } else {
-                    self.purchasedProductIDs.remove(transaction.productID)
-                    print("❌ Transaction revoked for product: \(transaction.productID)")
-                }
+        
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else {
+                print("⚠️ Unverified transaction found")
+                continue
             }
-        } catch {
-            print("❌ Error checking transactions: \(error)")
+            
+            if transaction.revocationDate == nil {
+                self.purchasedProductIDs.insert(transaction.productID)
+                print("✅ Found active transaction for product: \(transaction.productID)")
+                
+                // ✅ Check if the user is premium
+                if premiumIDs.contains(transaction.productID) {
+                    isPremiumUser = true
+                    print("✅ Premium subscription found: \(transaction.productID)")
+                }
+                
+                // ✅ Check if ads should be removed
+                if transaction.productID == "REMOVE_ADS" {
+                    hasRemovedAds = true
+                    print("✅ Ad removal purchase found")
+                }
+            } else {
+                self.purchasedProductIDs.remove(transaction.productID)
+                print("❌ Transaction revoked for product: \(transaction.productID)")
+            }
         }
         
         await MainActor.run {
@@ -220,10 +199,7 @@ extension SubscriptionsManager {
             try await AppStore.sync()
             await updatePurchasedProducts()
         } catch {
-            print("❌ Restore failed! Error: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showSubscriptionError(error.localizedDescription)
         }
     }
 }

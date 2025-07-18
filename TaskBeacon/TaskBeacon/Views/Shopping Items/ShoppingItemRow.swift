@@ -61,11 +61,6 @@ struct ShoppingItemRow: View {
                     }
                     
                     if let storeName = item.storeName, !storeName.isEmpty {
-//                        HStack(spacing: 4) {
-//                            Text("📍 \(storeName)")
-//                                .font(.subheadline)
-//                                .foregroundColor(colorScheme == .dark ? .gray.opacity(0.7) : .secondary)
-//                        }
                     } else {
                         Text("⚠️ No store assigned")
                             .font(.subheadline)

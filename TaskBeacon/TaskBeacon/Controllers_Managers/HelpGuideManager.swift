@@ -24,6 +24,8 @@ class HelpGuideManager: ObservableObject {
         errorMessage = nil
         
         guard let url = Bundle.main.url(forResource: "helpGuide", withExtension: "json") else {
+            ErrorAlertManager.shared.showDataError("Help guide not found")
+
             errorMessage = "Help guide not found"
             isLoading = false
             return
@@ -35,6 +37,8 @@ class HelpGuideManager: ObservableObject {
             helpGuide = try decoder.decode(HelpGuide.self, from: data)
             isLoading = false
         } catch {
+            ErrorAlertManager.shared.showDataError("Failed to load help guide: \(error.localizedDescription)")
+
             errorMessage = "Failed to load help guide: \(error.localizedDescription)"
             isLoading = false
         }

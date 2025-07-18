@@ -116,19 +116,6 @@ class PermissionManager: ObservableObject {
         }
     }
     
-//    private func convertLocationStatus(_ status: CLAuthorizationStatus) -> PermissionStatus {
-//        switch status {
-//        case .authorizedWhenInUse, .authorizedAlways:
-//            return .authorized
-//        case .denied, .restricted:
-//            return .denied
-//        case .notDetermined:
-//            return .notDetermined
-//        @unknown default:
-//            return .notDetermined
-//        }
-//    }
-    
     private func convertNotificationStatus(_ status: UNAuthorizationStatus) -> PermissionStatus {
         switch status {
         case .authorized:

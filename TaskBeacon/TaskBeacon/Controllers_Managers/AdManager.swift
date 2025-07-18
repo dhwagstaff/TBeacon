@@ -48,22 +48,17 @@ class AdManager: ObservableObject {
     @MainActor func updateConsentStatus() async {
         do {
             let consentInfo = ConsentInformation.shared
-            print("📊 Current consent status - canRequestAds: \(consentInfo.canRequestAds)")
             
             if !consentInfo.canRequestAds {
-                print("⏳ Waiting for consent to be gathered...")
                 try await Task.sleep(nanoseconds: 1_000_000_000)
             }
             
             canRequestAds = GoogleMobileAdsConsentManager.shared.canRequestAds
             isPrivacyOptionsRequired = GoogleMobileAdsConsentManager.shared.isPrivacyOptionsRequired
-            
-            print("📊 AdManager Consent Status Updated - canRequestAds: \(canRequestAds), isPrivacyOptionsRequired: \(isPrivacyOptionsRequired)")
-            
+                        
             if canRequestAds {
                 // Initialize SDK if not already initialized
                 if !isSDKInitialized {
-                    print("✅ Consent granted, initializing SDK...")
                     GoogleMobileAdsConsentManager.shared.startGoogleMobileAdsSDK()
                     isSDKInitialized = true
                 }
@@ -71,13 +66,14 @@ class AdManager: ObservableObject {
                 loadInterstitialAd()
             }
         } catch {
-            print("❌ Error updating consent status: \(error)")
+            ErrorAlertManager.shared.showDataError("Error updating consent status: \(error)")
         }
     }
     
     func canShowAd() -> Bool {
         if isCancelled {
-            print("❌ Cannot show ad: Ad was cancelled")
+            ErrorAlertManager.shared.showDataError("❌ Cannot show ad: Ad was cancelled")
+
             return false
         }
         let now = Date()
@@ -86,15 +82,12 @@ class AdManager: ObservableObject {
         let sinceAnyAd = min(sinceLastRewarded, sinceLastInterstitial)
         let canShow = sinceLastRewarded >= cooldownTime && sinceAnyAd >= minGapBetweenAds
 
-        print("⏳ Rewarded ad cooldown check: \(sinceLastRewarded) seconds since last rewarded ad. Can show? \(canShow)")
-        print("⏳ Min gap check: \(sinceAnyAd) seconds since any ad. Required: \(minGapBetweenAds)")
         return canShow
     }
     
     // Add a new method specifically for limit extension rewards
     func canShowLimitExtensionReward() -> Bool {
         if isCancelled {
-            print("❌ Cannot show limit extension reward: Ad was cancelled")
             return false
         }
         
@@ -105,7 +98,6 @@ class AdManager: ObservableObject {
     
     func showInterstitialAd() {
         if canShowInterstitialAd() {
-            print("🚀 Showing Interstitial Ad...")
             interstitialViewModel?.showInterstitialAd() // This should call the SDK's present method
             lastInterstitialAdTime = Date()
         } else {
@@ -114,8 +106,6 @@ class AdManager: ObservableObject {
     }
 
     func canShowInterstitialAd() -> Bool {
-        print("🔍 AdManager.entitlementManager is nil? \(entitlementManager == nil)")
-
         if let em = entitlementManager {
             print("🔍 AdManager.entitlementManager.isPremiumUser: \(em.isPremiumUser)")
             print("🔍 AdManager.entitlementManager instance: \(em)")
@@ -143,8 +133,6 @@ class AdManager: ObservableObject {
         let sinceAnyAd = min(sinceLastRewarded, sinceLastInterstitial)
         let canShow = sinceLastInterstitial >= interstitialCooldownTime && sinceAnyAd >= minGapBetweenAds
 
-        print("⏳ Interstitial ad cooldown check: \(sinceLastInterstitial) seconds since last interstitial ad. Can show? \(canShow)")
-        print("⏳ Min gap check: \(sinceAnyAd) seconds since any ad. Required: \(minGapBetweenAds)")
         return canShow
     }
     
@@ -155,7 +143,6 @@ class AdManager: ObservableObject {
 
     func showAd() {
         if canShowAd() {
-            print("🚀 Showing Ad...")
             if isAdReady {
                 rewardedInterstitialViewModel?.showRewardedAd()
                 lastAdTime = Date()
@@ -170,7 +157,6 @@ class AdManager: ObservableObject {
     func loadNewAd() {
         // Check if already loading
         if isAdLoading {
-            print("⏳ Ad is already loading, skipping...")
             return
         }
 
@@ -218,11 +204,6 @@ class AdManager: ObservableObject {
             print("❌ Cannot load interstitial ad: No consent")
             return
         }
-        
-        print("🔄 Loading new interstitial ad...")
-        print("🔍 canRequestAds: \(canRequestAds)")
-        print("🔍 isSDKInitialized: \(isSDKInitialized)")
-        print("🔍 MobileAds.shared: \(MobileAds.shared)")
 
         Task {
             interstitialViewModel?.loadAndShowAd { }
@@ -231,12 +212,8 @@ class AdManager: ObservableObject {
 
     // Add a method to refresh entitlement status
     func refreshEntitlementStatus() {
-        print("🔄 AdManager refreshing entitlement status...")
         if let em = entitlementManager {
-            print("🔍 Current premium status: \(em.isPremiumUser)")
-            
             if em.isPremiumUser {
-                print("🔹 User is premium - disabling ads")
                 isAdLoading = false
                 isAdReady = false
                 // Cancel any pending ad loads

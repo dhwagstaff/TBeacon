@@ -26,9 +26,6 @@ protocol CoreDataManagerProtocol {
     // Fetches objects from Core Data based on the provided entity name, predicate, and sorting criteria.
     func fetch<T: NSManagedObject>(entityName: String, with predicate: NSPredicate?, sortBy key: String?) async throws -> [T]
     
-    // Adds a new object of a generic type to Core Data.
-  //  func addObject<T: Encodable>(object: T) async throws
-    
     // Updates an existing object in Core Data.
     func updateObject<T: NSManagedObject>(object: T) async throws
     
@@ -140,6 +137,8 @@ class CoreDataManager: ObservableObject, CoreDataManagerProtocol {
                 }
             }
         } catch {
+            ErrorAlertManager.shared.showDataError("Error deleting object from Core Data: \(error.localizedDescription)")
+
             print("Error deleting object from Core Data: \(error.localizedDescription)")
             throw error
         }
@@ -195,6 +194,8 @@ class CoreDataManager: ObservableObject, CoreDataManagerProtocol {
             // Just post notification for view models to update
             notifyDataChanged()
         } catch {
+            ErrorAlertManager.shared.showDataError("Error deleting items: \(error.localizedDescription)")
+
             print("Error deleting items: \(error)")
         }
     }
@@ -237,6 +238,8 @@ class CoreDataManager: ObservableObject, CoreDataManagerProtocol {
                 return results
             }
         } catch {
+            ErrorAlertManager.shared.showDataError("Error fetch failed: \(error.localizedDescription)")
+
             print("Fetch Failed: \(error)")
         }
         

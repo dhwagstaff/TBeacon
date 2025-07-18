@@ -82,17 +82,6 @@ struct MapView: View {
                 if mapIsForShoppingItem {
                     Button("Show All Stores") {
                         showStoreSelectionSheet = true
-//                        withAnimation(.easeIn(duration: 0.3)) {
-//                            isShowingLoadingOverlay = true
-//                        }
-                        
-                        // Trigger store search and then show sheet
-//                        shoppingListViewModel.beginAddFlow {
-////                            withAnimation(.easeOut(duration: 0.3)) {
-//                                isShowingLoadingOverlay = false
-////                            }
-//                            showStoreSelectionSheet = true
-//                        }
                     }
                     .padding(.trailing)
                 }
@@ -303,10 +292,6 @@ struct MapView: View {
             .environmentObject(shoppingListViewModel)
             .environmentObject(locationManager)
         }
-        
-//        if isShowingLoadingOverlay {
-//            LoadingOverlay()
-//        }
     }
     
     private func isPreferredStore(_ item: MKMapItem) -> Bool {
@@ -424,17 +409,6 @@ struct MapView: View {
             cameraPosition = .region(newRegion)
         }
     }
-    
-//    private func selectLocation(_ item: MKMapItem) {
-//        selectedItem = item
-//        let coordinate = item.placemark.coordinate
-//        let newRegion = MKCoordinateRegion(
-//            center: coordinate,
-//            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-//        )
-//        mapRegion = newRegion
-//        cameraPosition = .region(newRegion)
-//    }
     
     private func handleLocationSelection(_ item: MKMapItem) {
         let coordinate = item.placemark.coordinate

@@ -34,6 +34,8 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
             if granted {
                 print("✅ Notification permission granted.")
             } else {
+                ErrorAlertManager.shared.showDataError("❌ Notification permission denied.")
+
                 print("❌ Notification permission denied.")
             }
         }
@@ -45,7 +47,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         let identifier = notification.request.identifier
         
         if recentlyPresentedNotifications.contains(identifier) {
-            print("🔔 Notification already recently presented, skipping")
             completionHandler([])
             return  // ✅ Add this return statement
         }
@@ -64,8 +65,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
     }
     
     private func speakNotification(_ notification: UNNotification) {
-        print("🗣️ App state: \(UIApplication.shared.applicationState.rawValue)")
-
         let content = notification.request.content
         
         // Create a natural language message
@@ -104,13 +103,8 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
             utterance.pitchMultiplier = 1.0
             utterance.volume = 0.8
             
-            print("🗣️ About to speak utterance")
-            
             // Speak the notification
             self.speechSynthesizer.speak(utterance)
-            
-            print("🗣️ speak() called successfully")
-            print("🗣️ Speaking notification: \(message)")
         }
     }
     
@@ -126,7 +120,6 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
         // Remove from notifiedRegionIDs if it was a region notification
         if LocationManager.shared.notifiedRegionIDs.contains(identifier) {
             LocationManager.shared.notifiedRegionIDs.remove(identifier)
-            print("🗑️ Removed notification for region: \(identifier)")
         }
         
         completionHandler()
@@ -159,6 +152,8 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
+                ErrorAlertManager.shared.showDataError("❌ Error scheduling notification: \(error.localizedDescription)")
+
                 print("❌ Error scheduling notification: \(error.localizedDescription)")
             } else {
                 print("✅ Notification scheduled: \(title) \(locationTrigger != nil ? "(Location-Based)" : "(Time-Based)")")

@@ -28,7 +28,6 @@ struct TaskBeaconApp: App {
     let persistenceController = PersistenceController.shared
     
     @StateObject private var locationManager: LocationManager
-//    @StateObject private var notificationDelegate = NotificationDelegate()
     @StateObject private var entitlementManager = EntitlementManager.shared
     @StateObject private var subscriptionsManager: SubscriptionsManager
     @StateObject private var dataUpdateManager = DataUpdateManager()
@@ -61,6 +60,8 @@ struct TaskBeaconApp: App {
             
             print("✅ Fetched \(items.count) items for geofencing.")
         } catch {
+            ErrorAlertManager.shared.showNetworkError("❌ Error fetching items: \(error)")
+
             print("❌ Error fetching items: \(error)")
         }
         
@@ -73,7 +74,6 @@ struct TaskBeaconApp: App {
         
         // Initialize all StateObject properties
         self._locationManager = StateObject(wrappedValue: LocationManager.shared)
-//        self._notificationDelegate = StateObject(wrappedValue: NotificationDelegate())
         self._entitlementManager = StateObject(wrappedValue: entitlementManager)
         self._subscriptionsManager = StateObject(wrappedValue: subscriptionsManager)
         self._dataUpdateManager = StateObject(wrappedValue: DataUpdateManager())
@@ -113,12 +113,8 @@ struct TaskBeaconApp: App {
                     // Force refresh EntitlementManager status
                     entitlementManager.forceRefreshSubscriptionStatus()
                     
-                    do {
                         let context = CoreDataManager.shared().viewContext
                         locationManager.loadAndMonitorAllGeofences(from: context)
-                    } catch {
-                        print("❌ Failed to load geofences: \(error.localizedDescription)")
-                    }
                 }
                 .onAppear {
                     // Track app launch
@@ -180,33 +176,10 @@ struct TaskBeaconApp: App {
             }
 
         } catch {
+            ErrorAlertManager.shared.showNetworkError("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
+
             print("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
         }
     }
-    
-//    private func scheduleDueDateNotifications() {
-//        do {
-//            let items: [ToDoItemEntity] = try CoreDataManager.shared().fetch(entityName: CoreDataEntities.toDoItem.stringValue, sortBy: [NSSortDescriptor(keyPath: \ToDoItemEntity.dueDate, ascending: true)])
-//            
-//            let currentDate = Calendar.current.startOfDay(for: Date())
-//            
-//            for item in items {
-//                let taskName = item.task ?? "To-Do Task"
-//
-//                // ✅ Time-Based Notification only
-//                if let dueDate = item.dueDate, Calendar.current.isDate(dueDate, inSameDayAs: currentDate) {
-//                    NotificationDelegate.shared.scheduleNotification(
-//                        title: "Task Reminder",
-//                        body: "Your task '\(taskName)' is due today.",
-//                        dueDate: dueDate
-//                    )
-//                }
-//                // ❌ REMOVE location-based notification here
-//            }
-//
-//        } catch {
-//            print("❌ Failed to fetch To-Do items: \(error.localizedDescription)")
-//        }
-//    }
 }
 

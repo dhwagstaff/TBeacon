@@ -64,8 +64,7 @@ class ShoppingListViewModel: ListsViewModel {
         } catch {
             print("❌ Failed to fetch items for LocationManager: \(error)")
             
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showLocationError("❌ Failed to fetch items for LocationManager: \(error)")
             
             LocationManager.shared.initializeWithItems([])
             NotificationCenter.default.addObserver(
@@ -254,10 +253,7 @@ class ShoppingListViewModel: ListsViewModel {
                 self.objectWillChange.send()
             }
         } catch {
-            print("❌ Failed to fetch Shopping items: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Failed to fetch Shopping items: \(error.localizedDescription)")
         }
     }
     
@@ -566,9 +562,6 @@ class ShoppingListViewModel: ListsViewModel {
                 return allStoreOptions
             }
         }()
-
-        // First group by category
-//        var groupedStores = Dictionary(grouping: storesToConsider, by: { $0.category })
         
         // Add preferred stores category if there are any
         let context = PersistenceController.shared.container.viewContext
@@ -654,7 +647,6 @@ class ShoppingListViewModel: ListsViewModel {
     private func sortStoreOptions(_ options: [StoreOption]) -> [StoreOption] {
         return options.sorted { a, b in
             // Get user location
-//            guard let userLocation = locationManager.userLocationManager?.location else {
             guard let userLocation = locationManager.userLocation else {
                 return a.name < b.name // Fallback to alphabetical if no location
             }
@@ -804,10 +796,7 @@ class ShoppingListViewModel: ListsViewModel {
 
             print("✅ Saved ShoppingItem: \(item.name ?? "")")
         } catch {
-            print("❌ Failed to save ShoppingItem: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Failed to save ShoppingItem: \(error.localizedDescription)")
         }
     }
     
@@ -838,10 +827,7 @@ class ShoppingListViewModel: ListsViewModel {
                 print("✅ Deleted item from category: \(category), store: \(store)")
             }
         } catch {
-            print("❌ Error deleting item: \(error.localizedDescription)")
-            
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
+            ErrorAlertManager.shared.showDataError("❌ Error deleting item: \(error.localizedDescription)")
         }
     }
     

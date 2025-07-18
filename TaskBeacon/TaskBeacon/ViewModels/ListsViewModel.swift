@@ -17,8 +17,6 @@ class ListsViewModel: NSObject, ObservableObject {
     @AppStorage("preferredStoreLongitude") private var preferredStoreLongitude: Double = 0.0
 
     @Published var activeCategories: [String: [String]] = [:]
-    @Published var errorMessage: String = Constants.emptyString
-    @Published var showErrorAlert = false
     @Published var refreshTrigger = UUID()
     
     var entitlementManager: EntitlementManager = EntitlementManager.shared

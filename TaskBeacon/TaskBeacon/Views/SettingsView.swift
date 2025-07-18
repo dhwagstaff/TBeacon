@@ -176,8 +176,6 @@ struct SettingsView: View {
                                             ? "Upgrade to \(product.displayName) for \(product.displayPrice) (one-time purchase)"
                                             : "Upgrade to \(product.displayName) for \(product.displayPrice)"
                                         )
-                                        
-//                                        Text("Upgrade to \(product.displayName) for \(product.displayPrice)")
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .tint(colorScheme == .dark ? .accentColor.opacity(0.9) : .accentColor)

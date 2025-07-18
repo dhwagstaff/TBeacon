@@ -165,11 +165,6 @@ struct AddEditShoppingItemView: View {
                                 viewModel.objectWillChange.send()
                             }
                         })
-                        
-//                        RewardedInterstitialContentView(
-//                            isPresented: $isShowingRewardedAd,
-//                            navigationTitle: "Echolist"
-//                        )
                     }
                     .padding(.vertical, 16)
                 }
@@ -230,35 +225,6 @@ struct AddEditShoppingItemView: View {
                     )
                     .environmentObject(locationManager)
                     .environmentObject(viewModel)
-                
-                // Create a temporary wrapper view that forces store load on appear
-//                ZStack {
-//                    Color.clear.onAppear {
-//                        print("Store sheet appearing, force loading fresh stores...")
-//                        // Force refresh any state before loading real view
-//                        Task {
-//                            // Force refresh stores when presenting view
-//                            if self.locationManager.stores.isEmpty {
-//                                await self.locationManager.performDirectMapKitSearch()
-//                            }
-//                            
-//                            // Trigger a state update to force refresh
-//                            await MainActor.run {
-//                                self.forceRefresh.toggle()
-//                            }
-//                        }
-//                    }
-//                    
-//                    UnifiedStoreSelectionView(isPresented: $showStoreSelection,
-//                                              selectedStoreFilter: $selectedStoreFilter,
-//                                              storeName: $storeName,
-//                                              storeAddress: $storeAddress,
-//                                              selectedStore: $selectedStore,
-//                                              latitude: $latitude,
-//                                              longitude: $longitude,
-//                                              isPreferred: $isPreferred,
-//                                              selectedShoppingItem: nil)
-//                }
             }
             .sheet(isPresented: $showSubscriptionSheet) {
                 SubscriptionScreen(showSubscriptionScreen: $showSubscriptionSheet)
