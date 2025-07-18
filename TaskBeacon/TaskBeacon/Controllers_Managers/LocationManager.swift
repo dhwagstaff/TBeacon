@@ -210,9 +210,9 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                             uniqueKeys.insert(key)
                         }
                     }
-                    ErrorAlertManager.shared.showDataError("✅ Found \(results.count) stores for major chain '\(userQuery)'")
+                    ErrorAlertManager.shared.showNetworkError("✅ Found \(results.count) stores for major chain '\(userQuery)'")
                 } catch {
-                    ErrorAlertManager.shared.showDataError("❌ Error searching for major chain '\(userQuery)': \(error)")
+                    ErrorAlertManager.shared.showNetworkError("❌ Error searching for major chain '\(userQuery)': \(error)")
                 }
             }
 
@@ -241,7 +241,7 @@ class LocationManager: NSObject, ObservableObject, UNUserNotificationCenterDeleg
                         }
                     }
                 } catch {
-                    ErrorAlertManager.shared.showDataError("❌ Error searching for '\(variation)': \(error)")
+                    ErrorAlertManager.shared.showNetworkError("❌ Error searching for '\(variation)': \(error)")
                 }
             }
         } else {
